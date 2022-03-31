@@ -10,17 +10,21 @@
 library(tidyverse)
 input_data <- read_csv(file = "input_data.csv")
 sal <- input_data[,1]       # ppt
-temp <- input_data[,2]      # temp in K 
-tempC <- temp-273.15        # temp in C
+tempC <- input_data[,2]     # temp in C
+temp <- tempC+273.15        # temp in K
 press <- input_data[,3]     # bar
 xca <- input_data[,4]       # [Ca] (mmol kg^-1)
+xca <- xca/(10^3)           # [Ca] (mol kg^-1)
 xmg <- input_data[,5]       # [Mg] (mmol kg^-1)
+xmg <- xmg/(10^3)           # [Mg] (mol kg^-1)
 mgcasw <- (xmg/xca)         # Seawater Mg/Ca 
 xso4 <- input_data[,6]      # [SO4] (mmol kg^-1)
-d11Bsw <- input_data[,7]    # d11B of seawater (per mille) 
-d18Osw <- input_data[,8]    # d18O of seawater (per mille) 
-pco2 <- input_data[,9]      # atmospheric pCO2 (ppmv) 
+d11Bsw <- input_data[,7]    # d11B of seawater (per mille SRM-951) 
+d18Osw <- input_data[,8]    # d18O of seawater (per mille SMOW) 
+pco2 <- input_data[,9]      # atmospheric pCO2 (uatm)
+pco2 <- pco2*(10^-6)        # atmospheric pCO2 (atm)
 co3 <- input_data[,10]      # seawater [CO3] (umol kg^-1)
+co3 <- co3*(10^-6)          # seawater [CO3] (mol kg^-1)
 
 #################################################################################################################################
 
@@ -35,8 +39,8 @@ xso4m <- 28.24  # modern [SO4] (mmol kg^-1)
 mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
 
 # Set the vital effect correction (i.e., d11B of borate to d11B of foram)
-m <- 1.0
-c <- 0.0
+m <- 0.88
+c <- 1.73
 
 # Set fractionation factor 
 alpha <- 1.0272              # Klochko et al. (2006)
@@ -133,25 +137,41 @@ colnames(pKs) <- c("pKs1", "pKs2", "pKsspc", "pKsB", "pKsw", "pK0")
 # DETERMINE FORAMINIFERAL D18O, D11B, AND MG/CA 
 
 # Compute pH and DIC from [co2] and [co3] 
-co2 <- pco2 / K0
+fco2 <- pco2*0.9968
+co2 <- fco2*K0
 p4 <- -co3/Ks1/Ks2
 p3 <- -co3/Ks2
 p2 <- co2-co3
 p1 <- co2*Ks1
 p0 <- co2*Ks1*Ks2
-pv <- c(p4, p3, p2, p1, p0)      
-roots <- polyroot(pv)
-h <- max(real(roots))
-dic <- co2*(1+K1/h+K1*K2/h/h);
+pv <- cbind(p0, p1, p2, p3, p4)  
+colnames(pv) <- c("p0", "p1", "p2", "p3", "p4")
+rootsi <- apply(pv, 1,polyroot)
+roots <- lapply(rootsi, function(x) {
+  if (all(Im(z <- zapsmall(x))==0)) as.numeric(z) else x
+})
+rootm <- matrix(unlist(roots), ncol=4, byrow = TRUE)
+rootdf <- data.frame(rootm[,1], rootm[,2], rootm[,3], rootm[,4])
+colnames(rootdf) <- c("a", "b", "c", "d")
+h <- data.frame(pmax(rootdf$a, rootdf$b, rootdf$c, rootdf$d))
+dic <- co2*(1+Ks1/h+Ks1*Ks2/h/h)
+dic <- dic
 pH <- -log10(h)               
 
+
 # Compute d11Bforam from pH and d11Bsw
-d11Bb <- ((epsilon*h)-(epsilon*KsB)-(d11Bsw*h)-(d11Bsw*KsB)-d11Bsw)/(-(h*alpha)+(KsB*alpha)-1)             
+pKsB <- -log10(KsB)
+t1 <- 10^(pKsB-pH)
+d11Bb <- ((t1*epsilon)-(t1*d11Bsw)-d11Bsw)/(-((t1*alpha)+1))
 d11Bf <- m*d11Bb + c
 
-# Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997)
-d18Of <- d18Osw - 0.27 + ((4.64-(4.64^2-4*0.09*(16.1 - tempC))^0.05)/(2*0.09))
+# Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
+d18Oswpdb <- d18Osw -0.27
+d18Of <- d18Oswpdb + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC)))^0.5))/(2*0.09))
 
+# Compute d18Oforam using salintiy-derived d18Osw (Anand et al., 2003)
+d18Oswsal <- (-19.264+(0.558*sal))-0.27 # includes conversion factor (0.27) for SMOW to PDB
+d18Ofsal <- d18Oswsal + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC)))^0.5))/(2*0.09))
 
 # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
 if(sstapp > 0){
@@ -165,8 +185,8 @@ if(sstapp < 1){
 mgcaf <- mgcasw^Ap*dic^Bp*(exp(Cp*xca+Dp*tempC+Ep))}
 
 # Generate matrix of predeicted foram pseudo-data 
-foram_pred <- cbind(d18Of, mgcaf, d11Bf)
-colnames(foram_pred) <- c("d18O", "Mg/Ca", "d11B")
+foram_pred <- cbind(d18Of, d18Ofsal, mgcaf, d11Bf)
+colnames(foram_pred) <- c("d18O", "d18Ofsal", "Mg/Ca", "d11B")
 
 #################################################################################################################################
 
