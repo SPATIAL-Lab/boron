@@ -1,29 +1,33 @@
 ###
-### Dustin T. Harper - 10 Mar, 2022 
+### Dustin T. Harper - 8 April, 2022 
 ###
 ### Compute planktic foraminiferal d18O, Mg/Ca, and d11B from seawater chem (d11Bsw, d18Osw, [Ca], [Mg], and [SO4]),
 ### STP, and marine carb chem
+### 
+### This version reads in lines of individual environmental parameters values and produces predicted foram 
+### geochemistry. It does not include stochastic sampling of environmental parameter pdfs
 ###
 
 #################################################################################################################################
 # READ IN csv data file with salinity, temp, pressure, seawater chem and marine carb chem data
 library(tidyverse)
 input_data <- read_csv(file = "input_data.csv")
-sal <- input_data[,1]       # ppt
-tempC <- input_data[,2]     # temp in C
+time <- input_data[,1]      # default axis label is in kyr
+sal <- input_data[,2]       # ppt
+tempC <- input_data[,3]     # temp in C
 temp <- tempC+273.15        # temp in K
-press <- input_data[,3]     # bar
-xca <- input_data[,4]       # [Ca] (mmol kg^-1)
+press <- input_data[,4]     # bar
+xca <- input_data[,5]       # [Ca] (mmol kg^-1)
 xca <- xca/(10^3)           # [Ca] (mol kg^-1)
-xmg <- input_data[,5]       # [Mg] (mmol kg^-1)
+xmg <- input_data[,6]       # [Mg] (mmol kg^-1)
 xmg <- xmg/(10^3)           # [Mg] (mol kg^-1)
 mgcasw <- (xmg/xca)         # Seawater Mg/Ca 
-xso4 <- input_data[,6]      # [SO4] (mmol kg^-1)
-d11Bsw <- input_data[,7]    # d11B of seawater (per mille SRM-951) 
-d18Osw <- input_data[,8]    # d18O of seawater (per mille SMOW) 
-pco2 <- input_data[,9]      # atmospheric pCO2 (uatm)
+xso4 <- input_data[,7]      # [SO4] (mmol kg^-1)
+d11Bsw <- input_data[,8]    # d11B of seawater (per mille SRM-951) 
+d18Osw <- input_data[,9]    # d18O of seawater (per mille SMOW) 
+pco2 <- input_data[,10]     # atmospheric pCO2 (uatm)
 pco2 <- pco2*(10^-6)        # atmospheric pCO2 (atm)
-co3 <- input_data[,10]      # seawater [CO3] (umol kg^-1)
+co3 <- input_data[,11]      # seawater [CO3] (umol kg^-1)
 co3 <- co3*(10^-6)          # seawater [CO3] (mol kg^-1)
 
 #################################################################################################################################
@@ -40,7 +44,7 @@ mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
 
 # Set the vital effect correction (i.e., d11B of borate to d11B of foram)
 m <- 0.88
-c <- 1.73
+c <- 1.73 - 0.8  # adjusted to align to d11B PETM data 
 
 # Set fractionation factor 
 alpha <- 1.0272              # Klochko et al. (2006)
@@ -69,7 +73,7 @@ A <- 0.09     # Exponenital constant in Mg/Ca-SST calibration (Anand et al., 200
 
 
 #################################################################################################################################
-# EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
+# CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
 
 # Calculate equil. constants using salinity and temp:
 Ks1m_st <-exp(2.83655-2307.1266/temp-1.5529413*(log(temp))-((0.20760841+4.0484/temp)*sqrt(sal))+0.0846834*sal-0.00654208*(sal^1.5)+log(1-(0.001005*sal)))
@@ -185,11 +189,72 @@ if(sstapp < 1){
 mgcaf <- mgcasw^Ap*dic^Bp*(exp(Cp*xca+Dp*tempC+Ep))}
 
 # Generate matrix of predeicted foram pseudo-data 
-foram_pred <- cbind(d18Of, d18Ofsal, mgcaf, d11Bf)
-colnames(foram_pred) <- c("d18O", "d18Ofsal", "Mg/Ca", "d11B")
+foram_pred <- cbind(time, d18Of, d18Ofsal, mgcaf, d11Bf)
+colnames(foram_pred) <- c("time", "d18O", "d18Ofsal", "Mg/Ca", "d11B")
 
 #################################################################################################################################
 
 
+#################################################################################################################################
+# PLOT TIME SERIES OF PREDICTED FORAM VALUES
 
+# Currently comparing 4500 Gt C release LOSCAR simulation (input_data) to PETM foram data 
+
+library(dplyr)
+library(ggplot2)
+
+# d11B simulation and forward model versus PETM data (M. velascoensis and A. soldadoensis)
+PETM_Mvel <- read_csv(file = "PETM_Mvel.csv")
+PETM_Asol <- read_csv(file = "PETM_Asol.csv")
+datatime <- PETM_Mvel[,1]
+datatime <- unlist(datatime)
+d11Bmvel <- PETM_Mvel[,2]
+d11Bmvel <- unlist(d11Bmvel)
+d11Bmvelp <- PETM_Mvel[,3]
+d11Bmvelp <- unlist(d11Bmvelp)
+d11Bmvelm <- PETM_Mvel[,4]
+d11Bmvelm <- unlist(d11Bmvelm)
+datatime2 <- PETM_Asol[,1]
+datatime2 <- unlist(datatime2)
+d11Basol <- PETM_Asol[,2]
+d11Basol <- unlist(d11Basol)
+d11Basolp <- PETM_Asol[,3]
+d11Basolp <- unlist(d11Basolp)
+d11Basolm <- PETM_Asol[,4]
+d11Basolm <- unlist(d11Basolm)
+PETM_Mvel <- tibble(datatime, d11Bmvel, d11Bmvelp, d11Bmvelm)
+PETM_Asol <- tibble(datatime2, d11Basol, d11Basolp, d11Basolm)
+
+ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=d11B)) +
+geom_pointrange(data = PETM_Asol, mapping = aes(x=datatime2, y=d11Basol, ymin=d11Basolm, ymax=d11Basolp)) +
+ylim(13.5,16)
+
+
+# # Mg/Ca comparison
+# PETM_MvelMg <- read_csv(file = "PETM_MvelMg.csv")
+# 
+# datatimeMg <- PETM_MvelMg[,1]
+# datatimeMg <- unlist(datatimeMg)
+# mvelMg <- PETM_MvelMg[,2]
+# mvelMg <- unlist(mvelMg)
+# mvelpMg<- PETM_MvelMg[,3]
+# mvelpMg <- unlist(mvelpMg)
+# mvelmMg <- PETM_MvelMg[,4]
+# mvelmMg <- unlist(mvelmMg)
+# pH <- unlist(pH)
+# PETM_MvelMg <- tibble(datatimeMg, d11BmvelMg, d11BmvelpMg, d11BmvelmMg)
+# time <- unlist(time)
+# mgcaf <- unlist(mgcaf)
+# 
+# ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=d11B)) +
+#   geom_pointrange(data = PETM_MvelMg, mapping = aes(x=datatimeMg, y=mvelMg, ymin=mvelmMg, ymax=mvelpMg)) +
+#   ylim(2,6)
+# 
+# 
+# # pH and d11B comparison plots for 100 Myr ZT19 record (file = input_data_ZT19.csv)
+# ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=pH)) +
+#   ylim(7,9)
+# 
+# ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=d11B)) +
+#   ylim(0,20)
 
