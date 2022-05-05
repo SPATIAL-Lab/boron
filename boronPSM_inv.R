@@ -1,14 +1,15 @@
 model{
   
-  #Likelihood function
+  #GJB - Likelihood function: this block evaluates the data against
+  #the modeled values
   mgcaf.data ~ dnorm(mgcaf, mgcaf.p)
-  mgcaf.p = 1/0.05^2
+  mgcaf.p = 1/0.03^2 #GJB - I've made up measurement uncertainties
   d18Of.data ~ dnorm(d18Of, d18Of.p)
   d18Of.p = 1/0.1^2
   d11Bf.data ~ dnorm(d11Bf, d11Bf.p)
   d11Bf.p = 1/0.2^2
   
-  # Proxy System Model
+  # GJB - Proxy System Model
   
   # INPUT FOR MODERN VALUES USED, CORRECTIONS APPLIED, CALIBRATION APPROACH 
   
@@ -26,6 +27,7 @@ model{
   alpha <- 1.0272              # Klochko et al. (2006)
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
   
+  # GJB - I'm leaving the multiple approaches out for now...
   # Select if apporach follows (0) Holland et al., 2020 (DIC-corrected), 
   # OR (1) Hollis et al., 2019 (pH-corrected) for Mg/Ca-SST
 #  sstapp <- 0
@@ -51,6 +53,7 @@ model{
   #################################################################################################################################
   # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
   
+  # GJB - note, no log10 function in JAGS, using log(x)/log(10)
   # Calculate equil. constants using salinity and temp:
   Ks1m_st <-exp(2.83655-2307.1266/temp-1.5529413*(log(temp))-((0.20760841+4.0484/temp)*sqrt(sal))+0.0846834*sal-0.00654208*(sal^1.5)+log(1-(0.001005*sal)))
   Ks2m_st <- exp(-9.226508-3351.6106/temp-0.2005743*(log(temp))-((0.106901773+23.9722/temp)*sqrt(sal))+0.1130822*sal-0.00846934*(sal^1.5)+log(1-(0.001005*sal)))
@@ -60,7 +63,6 @@ model{
   KsB_st <- exp(lnKsB_st)
   Ksw_st <- exp(148.96502-13847.26/temp-23.6521*(log(temp))+(118.67/temp-5.977+1.0495*(log(temp)))*(sal^0.5)-0.01615*sal)
   K0 <- exp(9345.17/temp-60.2409+23.3585*(log(temp/100))+sal*(0.023517-0.00023656*temp+0.0047036*((temp/100)^2)))
-  
   
   # Adjust equil. constants for the effect of pressure (Millero 1995):
   delV1 <- (-25.50)+0.1271*tempC
@@ -83,7 +85,6 @@ model{
   KsB <- (exp(-((delVB/(R*temp))*press)+((0.5*delkB)/(R*temp))*press^2))*KsB_st
   Ksw <- (exp(-((delVw/(R*temp))*press)+((0.5*delkw)/(R*temp))*press^2))*Ksw_st
   
-  
   # K*1, K*2, and K*spc are corrected for past seawater [Ca], [Mg], and [SO4] following ZT19:
   
   # Define ZT19 table 2 sensitivity parameters (si_j)
@@ -104,9 +105,12 @@ model{
 
   #################################################################################################################################
   
-  
   #################################################################################################################################
   # DETERMINE FORAMINIFERAL D18O, D11B, AND MG/CA 
+  
+  # GJB - In my experiments this is likley to be the biggest source
+  # of instability...I think for certain combos of pco2 and dic the 
+  # roots h1 and h2 are undefined?
   
   # Compute pH from [co2] and DIC
   fco2 <- pco2*0.9968
@@ -145,12 +149,19 @@ model{
 #    mgcaf <- mgcasw^Ap*dic^Bp*(exp(Cp*xca+Dp*tempC+Ep))}
   
   
-  ###Environmental priors
+  # GJB - These are the prior distributions for the stochastic
+  # model parameters. In this case they're all environmental
+  # parms 'external' to the psm, but we could also add some of 
+  # the PSM parameters as appropriate. Using gamma, normal, and 
+  # uniform distributions for different data types...
+    
+  # Environmental priors
+    
   sal ~ dgamma(sal.s, sal.r)       # ppt
   sal.s = 35  #gamma shape parameter
   sal.r = 1   #gamma rate parameter
   tempC ~ dnorm(temp.m, temp.p)     # temp in C
-  temp.m = 25   #gaussian mean
+  temp.m = 18   #gaussian mean
   temp.p = 1/5^2   #gaussian precision
   temp <- tempC+273.15        # temp in K
   press ~ dgamma(press.s, press.r)     # bar
@@ -172,10 +183,10 @@ model{
   d18Osw ~ dnorm(d18Osw.m, d18Osw.p)    # d18O of seawater (per mille SMOW) 
   d18Osw.m = -1
   d18Osw.p = 1/0.5^2
-  pco2 ~ dunif(pco2.l*(10^-6), pco2.u*(10^-6))     # atmospheric pCO2 (atm)
+  pco2 ~ dunif(pco2.l, pco2.u)     # atmospheric pCO2 (atm)
   pco2.l = 500e-6   #uniform lower bound
   pco2.u = 1500e-6   #uniform upper bound
-  dic ~ dgamma(dic.s, dic.r)      # seawater [CO3] (mol kg^-1)
-  dic.s = 21
-  dic.r = 1e4
+  dic ~ dunif(dic.l, dic.u)      # seawater [CO3] (mol kg^-1)
+  dic.l = 0.0015
+  dic.u = 0.003
 }
