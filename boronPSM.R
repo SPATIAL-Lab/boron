@@ -11,7 +11,7 @@
 #################################################################################################################################
 # READ IN csv data file with salinity, temp, pressure, seawater chem and marine carb chem data
 library(tidyverse)
-input_data <- read_csv(file = "input_data.csv")
+input_data <- read_csv(file = "input_data_st.csv")
 time <- input_data[,1]      # default axis label is in kyr
 sal <- input_data[,2]       # ppt
 tempC <- input_data[,3]     # temp in C
@@ -27,8 +27,8 @@ d11Bsw <- input_data[,8]    # d11B of seawater (per mille SRM-951)
 d18Osw <- input_data[,9]    # d18O of seawater (per mille SMOW) 
 pco2 <- input_data[,10]     # atmospheric pCO2 (uatm)
 pco2 <- pco2*(10^-6)        # atmospheric pCO2 (atm)
-co3 <- input_data[,11]      # seawater [CO3] (umol kg^-1)
-co3 <- co3*(10^-6)          # seawater [CO3] (mol kg^-1)
+dic <- input_data[,11]      # seawater [CO3] (umol kg^-1)
+dic <- dic*(10^-6)          # seawater [CO3] (mol kg^-1)
 
 #################################################################################################################################
 
@@ -44,7 +44,7 @@ mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
 
 # Set the vital effect correction (i.e., d11B of borate to d11B of foram)
 m <- 0.88
-c <- 1.73 - 0.8  # adjusted to align to d11B PETM data 
+c <- 1.73 #- 0.8  # adjusted to align to d11B PETM data 
 
 # Set fractionation factor 
 alpha <- 1.0272              # Klochko et al. (2006)
@@ -140,29 +140,19 @@ colnames(pKs) <- c("pKs1", "pKs2", "pKsspc", "pKsB", "pKsw", "pK0")
 #################################################################################################################################
 # DETERMINE FORAMINIFERAL D18O, D11B, AND MG/CA 
 
-# Compute pH and DIC from [co2] and [co3] 
+# Compute pH from [co2] and DIC
 fco2 <- pco2*0.9968
 co2 <- fco2*K0
-p4 <- -co3/Ks1/Ks2
-p3 <- -co3/Ks2
-p2 <- co2-co3
-p1 <- co2*Ks1
-p0 <- co2*Ks1*Ks2
-pv <- cbind(p0, p1, p2, p3, p4)  
-colnames(pv) <- c("p0", "p1", "p2", "p3", "p4")
-rootsi <- apply(pv, 1,polyroot)
-roots <- lapply(rootsi, function(x) {
-  if (all(Im(z <- zapsmall(x))==0)) as.numeric(z) else x
-})
-rootm <- matrix(unlist(roots), ncol=4, byrow = TRUE)
-rootdf <- data.frame(rootm[,1], rootm[,2], rootm[,3], rootm[,4])
-colnames(rootdf) <- c("a", "b", "c", "d")
-h <- data.frame(pmax(rootdf$a, rootdf$b, rootdf$c, rootdf$d))
-dic <- co2*(1+Ks1/h+Ks1*Ks2/h/h)
-dic <- dic
-pH <- -log10(h)               
-
-
+qa <- co2-dic
+qb <- co2*Ks1
+qc <- co2*Ks1*Ks2
+h1 <- (-qb+sqrt((qb^2)-(4*qa*qc)))/(2*qa)
+h2 <- (-qb-sqrt((qb^2)-(4*qa*qc)))/(2*qa)
+h12df <- data.frame(h1, h2)
+colnames(h12df) <- c("a", "b")
+h <- data.frame(pmax(h12df$a, h12df$b))     
+pH <- -log10(h)                      
+                     
 # Compute d11Bforam from pH and d11Bsw
 pKsB <- -log10(KsB)
 t1 <- 10^(pKsB-pH)
@@ -203,31 +193,31 @@ colnames(foram_pred) <- c("time", "d18O", "d18Ofsal", "Mg/Ca", "d11B")
 library(dplyr)
 library(ggplot2)
 
-# d11B simulation and forward model versus PETM data (M. velascoensis and A. soldadoensis)
-PETM_Mvel <- read_csv(file = "PETM_Mvel.csv")
-PETM_Asol <- read_csv(file = "PETM_Asol.csv")
-datatime <- PETM_Mvel[,1]
-datatime <- unlist(datatime)
-d11Bmvel <- PETM_Mvel[,2]
-d11Bmvel <- unlist(d11Bmvel)
-d11Bmvelp <- PETM_Mvel[,3]
-d11Bmvelp <- unlist(d11Bmvelp)
-d11Bmvelm <- PETM_Mvel[,4]
-d11Bmvelm <- unlist(d11Bmvelm)
-datatime2 <- PETM_Asol[,1]
-datatime2 <- unlist(datatime2)
-d11Basol <- PETM_Asol[,2]
-d11Basol <- unlist(d11Basol)
-d11Basolp <- PETM_Asol[,3]
-d11Basolp <- unlist(d11Basolp)
-d11Basolm <- PETM_Asol[,4]
-d11Basolm <- unlist(d11Basolm)
-PETM_Mvel <- tibble(datatime, d11Bmvel, d11Bmvelp, d11Bmvelm)
-PETM_Asol <- tibble(datatime2, d11Basol, d11Basolp, d11Basolm)
-
-ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=d11B)) +
-geom_pointrange(data = PETM_Asol, mapping = aes(x=datatime2, y=d11Basol, ymin=d11Basolm, ymax=d11Basolp)) +
-ylim(13.5,16)
+# # d11B simulation and forward model versus PETM data (M. velascoensis and A. soldadoensis)
+# PETM_Mvel <- read_csv(file = "PETM_Mvel.csv")
+# PETM_Asol <- read_csv(file = "PETM_Asol.csv")
+# datatime <- PETM_Mvel[,1]
+# datatime <- unlist(datatime)
+# d11Bmvel <- PETM_Mvel[,2]
+# d11Bmvel <- unlist(d11Bmvel)
+# d11Bmvelp <- PETM_Mvel[,3]
+# d11Bmvelp <- unlist(d11Bmvelp)
+# d11Bmvelm <- PETM_Mvel[,4]
+# d11Bmvelm <- unlist(d11Bmvelm)
+# datatime2 <- PETM_Asol[,1]
+# datatime2 <- unlist(datatime2)
+# d11Basol <- PETM_Asol[,2]
+# d11Basol <- unlist(d11Basol)
+# d11Basolp <- PETM_Asol[,3]
+# d11Basolp <- unlist(d11Basolp)
+# d11Basolm <- PETM_Asol[,4]
+# d11Basolm <- unlist(d11Basolm)
+# PETM_Mvel <- tibble(datatime, d11Bmvel, d11Bmvelp, d11Bmvelm)
+# PETM_Asol <- tibble(datatime2, d11Basol, d11Basolp, d11Basolm)
+# 
+# ggplot() + geom_point(data = foram_pred, mapping = aes(x=time, y=d11B)) +
+# geom_pointrange(data = PETM_Asol, mapping = aes(x=datatime2, y=d11Basol, ymin=d11Basolm, ymax=d11Basolp)) +
+# ylim(13.5,16)
 
 
 # # Mg/Ca comparison
