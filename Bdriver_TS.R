@@ -150,19 +150,10 @@ ai.all <-  unique(ai.all)
 ai.all <- sort(ai.all, decreasing = FALSE) 
 
 
-# Data to pass to JAGS
+# Vital effects and depth habitat pressure passed to JAGS (time-independent prior parms)
+# Conditioned on calibration species specified in input spreadsheet
 for (i in 1:(length(prox.in))){
-  
-  # Sample through the input data sets by row
-  d11B.d <- prox.in$d11B[i]
-  d11Bsd.d <- prox.in$d11Bsd[i]
-  MgCa.d <- prox.in$MgCa[i]
-  d18O.d <- prox.in$d18O[i]
   species.d <- prox.in$species[i]
-  ai.d <- prox.in$ai[i]
-  
-  # Vital effects and depth habitat pressure passed to JAGS (time-independent prior parms)
-  # Conditioned on calibration species specified in input spreadsheet
   if (species.d == "Grub")
   {bor.dat <- bor.Grub
   for.dat <-for.Grub
@@ -200,12 +191,13 @@ for (i in 1:(length(prox.in))){
   press.m <- bor.press.m
   press.sd <- bor.press.sd} 
 
-data = list("d11Bf.data" = d11B.d, "d11Bfu.data" = d11Bsd.d, "d18Of.data" = d18O.d, "mgcaf.data" = MgCa.d,
+data = list("d11Bf.data" = clean.d11B$d11B, "d11Bfu.data" = clean.d11B$d11Bsd, "d18Of.data" = clean.d18O$d18O, "mgcaf.data" = clean.MgCa$MgCa,
             "ages.bin" = ages.bin, "ages.max" = ages.max, "ages.min" = ages.min, "ages" = ages, "n.steps" = n.steps, 
-            "ai.prox" = ai.d, "press.m" = press.m, "press.sd" = press.sd, "d11Bcb" = bor.dat, "d11Bcfo" = for.dat, 
-            "m.mean" = m.mean, "m.sd" = m.sd, "c.mean" = c.mean, "c.sd" = c.sd, "seccal" = seccal, "seccal.u" = seccal.u, 
-            "Dd18Oseccal" = Dd18Oseccal, "c.correction" = c.correction, "Hp.mean" = Hp.mean, "Hp.sd" = Hp.sd, 
-            "Bmod.mean" = Bmod.mean, "Bmod.sd" = Bmod.sd, "A.mean" = A.mean, "A.sd" = A.sd)
+            "ai.prox" = ai.all, "ai.d11B" = ai.d11B, "ai.d18O" = ai.d18O, "ai.MgCa" = ai.MgCa, "press.m" = press.m, 
+            "press.sd" = press.sd, "d11Bcb" = bor.dat, "d11Bcfo" = for.dat, "m.mean" = m.mean, "m.sd" = m.sd, 
+            "c.mean" = c.mean, "c.sd" = c.sd, "seccal" = seccal, "seccal.u" = seccal.u, "Dd18Oseccal" = Dd18Oseccal, 
+            "c.correction" = c.correction, "Hp.mean" = Hp.mean, "Hp.sd" = Hp.sd, "Bmod.mean" = Bmod.mean, 
+            "Bmod.sd" = Bmod.sd, "A.mean" = A.mean, "A.sd" = A.sd)
 
 # Run the inversion
 jout = jags(model.file = "boronPSM_TS_inv.R", parameters.to.save = parms,
