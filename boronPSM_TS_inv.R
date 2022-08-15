@@ -52,6 +52,11 @@ model{
   alpha.p = 1/0.0003^2   #gaussian precision
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
 
+  # # Initialize lists for PSM for loop
+  # d11Bf <- list()
+  # d18Of <- list()
+  # mgcaf <- list()
+ 
   for (i in 1:ai.prox){
     # Hollis et al., 2019 input: set H, B and A distributions (i.e., Evans et al., 2012, 2016b)
     # Includes calibration uncertainty in these terms
@@ -140,7 +145,7 @@ model{
     t1 <- 10^(pKsB-pH)
     d11Bb <- ((t1*epsilon)-(t1*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1*alpha)+1))
     c.final <- c + c.correction # adjusts final c value if desired - correction specified in driver
-    d11Bf <- m*d11Bb + (c.final)
+    d11Bf[i] <- m*d11Bb + (c.final)
      
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
     sw.sens ~ dnorm(0.558, 1/0.03^2) # Uncertainty represents std dev of regression slope in GEOSECS obs. reported in Charles and Fairbanks (1990)
@@ -150,7 +155,7 @@ model{
     indexop ~ dnorm(indexop.m, indexop.p)
     indexop.m = seccal/100
     indexop.p = 1/(seccal.u/100)^2
-    d18Of <- d18Of.pr + indexop*Dd18Oseccal
+    d18Of[i] <- d18Of.pr + indexop*Dd18Oseccal
     
     # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
     mgcasw <- (xmg[ai.prox[i]]/xca[ai.prox[i]])     
@@ -163,7 +168,12 @@ model{
     salcorrco ~ dnorm(salcorrco.m, salcorrco.p)
     salcorrco.m = 0.042
     salcorrco.p = 1/0.004^2
-    mgcaf <- mgca_sal / (1-(sal[ai.prox[i]]-35)*salcorrco)
+    mgcaf[i] <- mgca_sal / (1-(sal[ai.prox[i]]-35)*salcorrco)
+    
+    # # Store PSM predicted calculations for time bins with data
+    # d11Bf[[i]] <- d11Bf[i]
+    # d18Of[[i]] <- d18Of[i]
+    # mgcaf[[i]] <- mgcaf[i]
   }
   
 ############################################################################################
@@ -172,15 +182,15 @@ model{
  
   # Environmental time-dependent priors
     
-  sal <- list()
-  tempC <- list()
-  xca <- list()
-  xmg <- list()
-  xso4 <- list()
-  d11Bsw <- list()
-  d18Osw <- list()
-  pco2 <- list()
-  dic <- list()
+  # sal <- list()
+  # tempC <- list()
+  # xca <- list()
+  # xmg <- list()
+  # xso4 <- list()
+  # d11Bsw <- list()
+  # d18Osw <- list()
+  # pco2 <- list()
+  # dic <- list()
     
   for (i in 2:n.steps){
     
@@ -257,15 +267,15 @@ model{
   dic[i] = dic[i-1] + dic.sig[i]
   # dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 + dic.sig[i]
   
-  sal[[i]] <- sal[i]
-  tempC[[i]] <- tempC[i]
-  xca[[i]] <- xca[i]
-  xmg[[i]] <- xmg[i]
-  xso4[[i]] <- xso4[i]
-  d11Bsw[[i]] <- d11Bsw[i]
-  d18Osw[[i]] <- d18Osw[i]
-  pco2[[i]] <- pco2[i]
-  dic[[i]] <- dic[i]
+  # sal[[i]] <- sal[i]
+  # tempC[[i]] <- tempC[i]
+  # xca[[i]] <- xca[i]
+  # xmg[[i]] <- xmg[i]
+  # xso4[[i]] <- xso4[i]
+  # d11Bsw[[i]] <- d11Bsw[i]
+  # d18Osw[[i]] <- d18Osw[i]
+  # pco2[[i]] <- pco2[i]
+  # dic[[i]] <- dic[i]
   }
 
   # Age index vector for prior time bins
