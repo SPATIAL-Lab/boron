@@ -1,7 +1,8 @@
 model{
+############################################################################################
+#    LIKELIHOOD FUNCTION: evaluates the data against modeled values
+############################################################################################    
   
-  #GJB - Likelihood function: this block evaluates the data against
-  #the modeled values
   mgcaf.data ~ dnorm(mgcaf, mgcaf.p)
   mgcaf.p = 1/0.03^2 
   d18Of.data ~ dnorm(d18Of, d18Of.p)
@@ -9,16 +10,26 @@ model{
   d11Bf.data ~ dnorm(d11Bf, d11Bf.p)
   d11Bf.p = 1/d11Bfu.data^2
 
-  # Determine 'm' and 'c' d11Bforam-d11Bborate calibration parameters using modern species calibration points. Data is specified in 'driver'
 
+############################################################################################
+#    DETERMINE 'm' AND 'c' VALUES USING MODERN SPECIES CALUBRATION DATA (input in driver)
+############################################################################################    
+  
+  # Average measurement precision for modern calibration points
+  Bmeas.sd <- 0.2 
+  
   for(i in 1:length(d11Bcb)){
-    d11Bcb[i] ~ dnorm(d11Bcb.m[i], 1/0.2^2) # second term is average measurement precision for calibration points
+    d11Bcb[i] ~ dnorm(d11Bcb.m[i], 1/Bmeas.sd^2) 
     d11Bcb.m[i] = d11Bcfo[i]*m + c
   }
 
-  # GJB - Proxy System Model
+
+############################################################################################
+#    PROXY SYSTEM MODEL
+############################################################################################    
   
-  # INPUT FOR MODERN VALUES USED, CORRECTIONS APPLIED, CALIBRATION APPROACH 
+  
+  # INPUT VALUES FOR CALCULATIONS 
   
   # Set modern concentrations for Mg, Ca, and SO4
   xcam <- 10.2821 # modern [Ca] (mmol kg^-1)
@@ -34,27 +45,23 @@ model{
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
 
   
-  # Hollis et al., 2019 input: set H, B and A values (i.e., Evans et al., 2012, 2016b)
-  # DH - Includes calibration uncertainty in these terms
-  Hp ~ dnorm(Hp.m, Hp.p) # nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer is typically used = 0.41)
-  Hp.m = 0.6
-  Hp.p = 1/0.1^2
+  # Hollis et al., 2019 input: set H, B and A distributions (i.e., Evans et al., 2012, 2016b)
+  # Includes calibration uncertainty in these terms
+  Hp ~ dnorm(Hp.m, Hp.p) # nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer)
+  Hp.m = Hp.mean
+  Hp.p = 1/Hp.sd^2
   Bmod ~ dnorm(Bmod.m, Bmod.p) # modern pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
-  Bmod.m = 0.38  
-  Bmod.p = 1/0.02^2
+  Bmod.m = Bmod.mean  
+  Bmod.p = 1/Bmod.sd^2
   A ~ dnorm(A.m, A.p) # Exponenital constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
-  A.m = 0.07    
-  A.p = 1/0.01^2
+  A.m = A.mean    
+  A.p = 1/A.sd^2
   
   
-  #################################################################################################################################
-  
-  
-  #################################################################################################################################
   # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
   
-  # GJB - note, no log10 function in JAGS, using log(x)/log(10)
   # Calculate equil. constants using salinity and temp:
+  temp <- tempC+273.15
   Ks1m_st <-exp(2.83655-2307.1266/temp-1.5529413*(log(temp))-((0.20760841+4.0484/temp)*sqrt(sal))+0.0846834*sal-0.00654208*(sal^1.5)+log(1-(0.001005*sal)))
   Ks2m_st <- exp(-9.226508-3351.6106/temp-0.2005743*(log(temp))-((0.106901773+23.9722/temp)*sqrt(sal))+0.1130822*sal-0.00846934*(sal^1.5)+log(1-(0.001005*sal)))
   logKsspcm_st <- ((-171.9065-0.077993*temp+2839.319/temp+71.595*(log(temp)/log(10))+(-0.77712+0.0028426*temp+178.34/temp)*(sal^0.5)-0.07711*sal+0.0041249*(sal^1.5)))
@@ -103,12 +110,10 @@ model{
   Ks2 <- Ks2m*(1+(s2_ca*(xca/xcam-1)+s2_mg*(xmg/xmgm-1)+s2_so4*(xso4/xso4m-1)))
   Ksspc <- Ksspcm*(1+(sspc_ca*(xca/xcam-1)+sspc_mg*(xmg/xmgm-1)+sspc_so4*(xso4/xso4m-1)))
 
-  #################################################################################################################################
   
-  #################################################################################################################################
   # DETERMINE FORAMINIFERAL D18O, D11B, AND MG/CA 
   
-  # GJB - In my experiments this is likley to be the biggest source
+  # GJB - In my experiments this is likely to be the biggest source
   # of instability...I think for certain combos of pco2 and dic the 
   # roots h1 and h2 are undefined?
   
@@ -131,7 +136,7 @@ model{
    
   # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
   sw.sens ~ dnorm(0.558, 1/0.03^2) # Uncertainty represents std dev of regression slope in GEOSECS obs. reported in Charles and Fairbanks (1990)
-  d18Osw.sc <- d18Osw + (sw.sens*(sal-35)) # update d18Osw to reflect changes in salinity
+  d18Osw.sc <- d18Osw + (sw.sens*(sal-35)) 
   d18Oswpdb <- d18Osw.sc -0.27
   d18Of.pr <- d18Oswpdb + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC)))^0.5))/(2*0.09))
   indexop ~ dnorm(indexop.m, indexop.p)
@@ -140,63 +145,124 @@ model{
   d18Of <- d18Of.pr + indexop*Dd18Oseccal
   
   # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
-    Bcorr <- ((mgcasw^Hp)/(mgcaswm^Hp)) * Bmod
-    mgca_corr <- Bcorr*(exp(A*tempC))
-    pHcorrco ~ dnorm(pHcorrco.m, pHcorrco.p)
-    pHcorrco.m = 0.70
-    pHcorrco.p = 1/0.09^2
-    mgca_sal <- mgca_corr / (1-(8.05-pH)*pHcorrco)
-    salcorrco ~ dnorm(salcorrco.m, salcorrco.p)
-    salcorrco.m = 0.042
-    salcorrco.p = 1/0.004^2
-    mgcaf <- mgca_sal / (1-(sal-35)*salcorrco)
+  Bcorr <- ((mgcasw^Hp)/(mgcaswm^Hp)) * Bmod
+  mgca_corr <- Bcorr*(exp(A*tempC))
+  pHcorrco ~ dnorm(pHcorrco.m, pHcorrco.p)
+  pHcorrco.m = 0.70
+  pHcorrco.p = 1/0.09^2
+  mgca_sal <- mgca_corr / (1-(8.05-pH)*pHcorrco)
+  salcorrco ~ dnorm(salcorrco.m, salcorrco.p)
+  salcorrco.m = 0.042
+  salcorrco.p = 1/0.004^2
+  mgcaf <- mgca_sal / (1-(sal-35)*salcorrco)
 
   
-  # GJB - These are the prior distributions for the stochastic
-  # model parameters. In this case they're all environmental
-  # parms 'external' to the psm, but we could also add some of 
-  # the PSM parameters as appropriate. Using gamma, normal, and 
-  # uniform distributions for different data types...
+############################################################################################
+#    PRIORS
+############################################################################################    
+ 
+  # Environmental time-dependent priors
     
-  # Environmental priors
+  priors.ts <- list()
     
-  sal ~ dnorm(sal.m, sal.p)     # temp in C
-  sal.m = 35   #gaussian mean
-  sal.p = 1/0.5^2   #gaussian precision  
-  tempC ~ dnorm(temp.m, temp.p)     # temp in C
-  temp.m = 30   #gaussian mean
-  temp.p = 1/10^2   #gaussian precision
-  temp <- tempC+273.15        # temp in K
-  press ~ dnorm(press.m, press.p)     # bar
-  press.m = 10
-  press.p = 1/2^2
-  xca ~ dnorm(xca.m, xca.p)       # [Ca] (mol kg^-1)
+  for (i in 1:n.steps){
+    
+  # Salinity (ppt)  
+  sal.m = 35  
+  sal.p = 1/0.5^2    
+  sal[1] ~ dnorm(sal.m, sal.p)     
+  sal.pc = 1
+  sal.sig[i] ~ dnorm(0, sal.pc)
+  sal[i] = sal[i-1] + sal.sig[i]
+  
+  # Temp in C
+  tempC.m = 30   
+  tempC.p = 1/10^2 
+  tempC[1] ~ dnorm(tempC.m, tempC.p)     
+  tempC.pc = 1
+  tempC.sig[i] ~ dnorm(0, tempC.pc)
+  tempC[i] = tempC[i-1] + tempC.sig[i]
+  
+  # [Ca] (mmol kg^-1)
   xca.m = 17
   xca.p = 1/0.5^2
-  xmg ~ dnorm(xmg.m, xmg.p)       # [Mg] (mol kg^-1)
+  xca[1] ~ dnorm(xca.m, xca.p)       
+  xca.pc = 0.1
+  xca.sig[i] ~ dnorm(0, xca.pc)
+  xca[i] = xca[i-1] + xca.sig[i]
+  
+  # [Mg] (mmol kg^-1)
   xmg.m = 36
   xmg.p = 1/0.5^2
-  mgcasw <- (xmg/xca)         # Seawater Mg/Ca 
-  xso4 ~ dnorm(xso4.m, xso4.p)      # [SO4] (mmol kg^-1)
+  xmg[1] ~ dnorm(xmg.m, xmg.p)      
+  xmg.pc = 0.1
+  xmg.sig[i] ~ dnorm(0, xmg.pc)
+  xmg[i] = xmg[i-1] + xmg.sig[i]
+  
+  # Seawater Mg/Ca 
+  mgcasw <- (xmg/xca)         
+  
+  # [SO4] (mmol kg^-1)
   xso4.m = 14
   xso4.p = 1/0.5^2
-  d11Bsw ~ dnorm(d11Bsw.m, d11Bsw.p)    # d11B of seawater (per mille SRM-951) 
+  xso4[1] ~ dnorm(xso4.m, xso4.p)      
+  xso4.pc = 0.1
+  xso4.sig[i] ~ dnorm(0, xso4.pc)
+  xso4[i] = xso4[i-1] + xso4.sig[i]
+  
+  # d11B of seawater (per mille SRM-951) 
   d11Bsw.m = 38.45
   d11Bsw.p = 1/0.5^2
-  d18Osw ~ dnorm(d18Osw.m, d18Osw.p)    # d18O of seawater (per mille SMOW) 
+  d11Bsw[1] ~ dnorm(d11Bsw.m, d11Bsw.p)    
+  d11Bsw.pc = 0.1
+  d11Bsw.sig[i] ~ dnorm(0, d11Bsw.pc)
+  d11Bsw[i] = d11Bsw[i-1] + d11Bsw.sig[i]
+  
+  # d18O of seawater (per mille SMOW) 
   d18Osw.m = -1
   d18Osw.p = 1/0.5^2
-  pco2 ~ dunif(pco2.l, pco2.u)     # atmospheric pCO2 (atm)
-  pco2.l = 300e-6   #uniform lower bound
-  pco2.u = 2500e-6   #uniform upper bound
-  dic ~ dunif(dic.l, dic.u)      # seawater DIC (mol kg^-1)
-  dic.l = 0.0018
-  dic.u = 0.0024
+  d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
+  d18Osw.pc = 0.1
+  d18Osw.sig[i] ~ dnorm(0, d18Osw.pc)
+  d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i] 
   
-  # "Vital effect" priors, posterior values are used in PSM calcs
-  m ~ dnorm(m.mean, 1/m.sd^2)    # prior distribution of m
-  c ~ dnorm(c.mean, 1/c.sd^2)    # prior distribution of c
+  # Atmospheric pCO2 (atm)
+  pco2.l = 300e-6   
+  pco2.u = 2500e-6   
+  pco2[1] ~ dunif(pco2.l, pco2.u)    
+  pco2.pc = 10e-6
+  pco2.sig[i] ~ dnorm(0, pco2.pc)
+  pco2[i] = pco2[i-1] + pco2.sig[i]
+  
+  # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
+  dic.m = 0.0022
+  dic.p = 1/0.0002^2
+  dic[1] ~ dnorm(dic.m, dic.p)
+  dic.pc = 0.00002
+  dic.sig[i] ~ dnorm(0, dic.pc)
+  dic[i] = dic[i-1] + dic.sig[i]
+  # dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 + dic.sig[i]
 
+  priors.ts[[i]] <- c(sal[i], tempC[i], xca[i], xmg[i], xso4[i], d11Bsw[i], d18Osw[i], pco2[i], dic[i])  
+  }
+ 
+  # Append age index (ai) for prior time steps
+  priors.ts$ai = ceiling((ages.max - ages) / ages.bin)  
+     
+  
+  # Time independent priors 
+  
+  # 'm' boron vital effect calibration parm 
+  m ~ dnorm(m.mean, 1/m.sd^2)  
+  
+  # 'c' boron vital effect calibration parm
+  c ~ dnorm(c.mean, 1/c.sd^2)     
+  
+  # Pressure (bar)
+  press ~ dnorm(press.m, press.p)    
+  press.p = 1/press.sd^2 
+  
+  
 }
 
 
