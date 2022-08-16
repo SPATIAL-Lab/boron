@@ -4,21 +4,21 @@ model{
 ############################################################################################    
  
   ai.d11B.env = match(ai.d11B, ai.env)
-  ai.mgca.env = match(ai.MgCa, ai.env)
+  ai.mgca.env = match(ai.mgca, ai.env)
   ai.d18O.env = match(ai.d18O, ai.env)
   
   for (i in 1:ai.d11B){
-  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B.env[i]], d11Bf.p)
-  d11Bf.p = 1/d11Bfu.data^2
+  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B.env, d11Bf.p)
+  d11Bf.p = 1/d11Bfu.data[i]^2
   }
   
   for (i in 1:ai.MgCa){
-  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca.env[i]], mgcaf.p)
+  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca.env, mgcaf.p)
   mgcaf.p = 1/0.03^2 
   }
   
   for (i in 1:ai.d18O){
-  d18Of.data[i] ~ dnorm(d18Of[ai.d18O.env[i]], d18Of.p)
+  d18Of.data[i] ~ dnorm(d18Of[ai.d18O.env, d18Of.p)
   d18Of.p = 1/0.1^2
   }
   
@@ -300,14 +300,14 @@ model{
   #   }
 
     # 'm' boron vital effect calibration parm 
-    m ~ dnorm(m.mean, 1/m.sd^2)  
+    m ~ dnorm(m.Grub, 1/m.Grubu^2)  
     
     # 'c' boron vital effect calibration parm
-    c ~ dnorm(c.mean, 1/c.sd^2)     
+    c ~ dnorm(c.Grub, 1/c.Grubu^2)     
     
     # Pressure (bar)
-    press ~ dnorm(press.m, press.p)    
-    press.p = 1/press.sd^2 
+    press ~ dnorm(Grub.press.m, press.p)    
+    press.p = 1/Grub.press.sd^2 
     
 }
 
