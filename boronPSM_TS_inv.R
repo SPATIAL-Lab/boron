@@ -2,26 +2,24 @@ model{
 ############################################################################################
 #    LIKELIHOOD FUNCTION: evaluates the data against modeled values
 ############################################################################################    
- 
-  ai.d11B.env = match(ai.d11B, ai.env)
-  ai.mgca.env = match(ai.mgca, ai.env)
-  ai.d18O.env = match(ai.d18O, ai.env)
   
-  for (i in 1:ai.d11B){
-  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B.env, d11Bf.p)
-  d11Bf.p = 1/d11Bfu.data[i]^2
-  }
-  
-  for (i in 1:ai.MgCa){
-  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca.env, mgcaf.p)
+  # Gaussian precision for Mg/Ca measurements 
   mgcaf.p = 1/0.03^2 
-  }
-  
-  for (i in 1:ai.d18O){
-  d18Of.data[i] ~ dnorm(d18Of[ai.d18O.env, d18Of.p)
+  # Gaussian precision for d18O measurements 
   d18Of.p = 1/0.1^2
+  
+  for (i in 1:length(ai.d11B)){
+  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B.env[i]], d11Bf.p[i])
+  d11Bf.p[i] = 1/d11Bfu.data[i]^2
   }
   
+  for (i in 1:length(ai.mgca)){
+  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca.env[i]], mgcaf.p)
+  }
+  
+  for (i in 1:length(ai.d18O)){
+  d18Of.data[i] ~ dnorm(d18Of[ai.d18O.env[i]], d18Of.p)
+  }
   
 
 ############################################################################################
@@ -45,7 +43,7 @@ model{
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
 
   
-  # Define ZT19 table 2 sensitivity parameters (si_j)
+  # Define ZT19 table 2 sensitivity parameters (si_j) for changing sw chemistry on carb chem
   s1_ca <- 5/1000
   s1_mg <- 17/1000
   s1_so4 <- 208/1000
@@ -72,7 +70,7 @@ model{
   R <- 83.131 # constant (cm^3 bar mol^-1 K^-1)
   
     
-    for (i in 1:ai.prox){
+    for (i in 1:length(ai.prox)){
     # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
     
     # Calculate equil. constants using salinity and temp:
@@ -81,7 +79,7 @@ model{
     Ks2m_st[i] <- exp(-9.226508-3351.6106/temp[i]-0.2005743*(log(temp[i]))-((0.106901773+23.9722/temp[i])*sqrt(sal[ai.prox[i]]))+0.1130822*sal[ai.prox[i]]-0.00846934*(sal[ai.prox[i]]^1.5)+log(1-(0.001005*sal[ai.prox[i]])))
     logKsspcm_st[i] <- ((-171.9065-0.077993*temp[i]+2839.319/temp[i]+71.595*(log(temp[i])/log(10))+(-0.77712+0.0028426*temp[i]+178.34/temp[i])*(sal[ai.prox[i]]^0.5)-0.07711*sal[ai.prox[i]]+0.0041249*(sal[ai.prox[i]]^1.5)))
     Ksspcm_st[i] <- 10^(logKsspcm_st[i])
-    lnKsB_st[i] <- ((-8966.9-2890.53*sal[ai.prox[i]]^0.5-77.942*sal[ai.prox[i]]+1.728*sal[ai.prox[i]]^1.5-0.0996*sal[ai.prox[i]]^2)/temp[i])+148.0248+137.1942*sal[ai.prox[i]]^0.5+1.62142*sal[ai.prox[i]]-(24.4344+25.085*sal[ai.prox[i]]^0.5+0.2474*sal[ai.prox[i]])*(log(temp))+(0.053105*sal[ai.prox[i]]^0.5*temp[i])
+    lnKsB_st[i] <- ((-8966.9-2890.53*sal[ai.prox[i]]^0.5-77.942*sal[ai.prox[i]]+1.728*sal[ai.prox[i]]^1.5-0.0996*sal[ai.prox[i]]^2)/temp[i])+148.0248+137.1942*sal[ai.prox[i]]^0.5+1.62142*sal[ai.prox[i]]-(24.4344+25.085*sal[ai.prox[i]]^0.5+0.2474*sal[ai.prox[i]])*(log(temp[i]))+(0.053105*sal[ai.prox[i]]^0.5*temp[i])
     KsB_st[i] <- exp(lnKsB_st[i])
     Ksw_st[i] <- exp(148.96502-13847.26/temp[i]-23.6521*(log(temp[i]))+(118.67/temp[i]-5.977+1.0495*(log(temp[i])))*(sal[ai.prox[i]]^0.5)-0.01615*sal[ai.prox[i]])
     K0[i] <- exp(9345.17/temp[i]-60.2409+23.3585*(log(temp[i]/100))+sal[ai.prox[i]]*(0.023517-0.00023656*temp[i]+0.0047036*((temp[i]/100)^2)))
@@ -105,9 +103,7 @@ model{
     KsB[i] <- (exp(-((delVB[i]/(R*temp[i]))*press)+((0.5*delkB[i])/(R*temp[i]))*press^2))*KsB_st[i]
     Ksw[i] <- (exp(-((delVw[i]/(R*temp[i]))*press)+((0.5*delkw[i])/(R*temp[i]))*press^2))*Ksw_st[i]
     
-    # K*1, K*2, and K*spc are corrected for past seawater [Ca], [Mg], and [SO4] following ZT19:
-
-
+    # K*1, K*2, and K*spc are corrected for past seawater [Ca], [Mg], and [SO4] following ZT19
     Ks1[i] <- Ks1m[i]*(1+(s1_ca*(xca[ai.prox[i]]/xcam-1)+s1_mg*(xmg[ai.prox[i]]/xmgm-1)+s1_so4*(xso4[ai.prox[i]]/xso4m-1)))
     Ks2[i] <- Ks2m[i]*(1+(s2_ca*(xca[ai.prox[i]]/xcam-1)+s2_mg*(xmg[ai.prox[i]]/xmgm-1)+s2_so4*(xso4[ai.prox[i]]/xso4m-1)))
     Ksspc[i] <- Ksspcm[i]*(1+(sspc_ca*(xca[ai.prox[i]]/xcam-1)+sspc_mg*(xmg[ai.prox[i]]/xmgm-1)+sspc_so4*(xso4[ai.prox[i]]/xso4m-1)))
@@ -132,7 +128,7 @@ model{
     # Compute d11Bforam from pH and d11Bsw
     pKsB[i] <- -(log(KsB[i])/log(10))
     t1[i] <- 10^(pKsB[i]-pH[i])
-    d11Bb[i] <- ((t1*epsilon)-(t1*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1*alpha)+1))
+    d11Bb[i] <- ((t1[i]*epsilon)-(t1[i]*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1[i]*alpha)+1))
     c.final[i] <- c + c.correction # adjusts final c value if desired - correction specified in driver
     d11Bf[i] <- m*d11Bb[i]+ (c.final[i])
      
@@ -159,87 +155,115 @@ model{
 #    ENVIRONMENTAL MODEL
 ############################################################################################    
  
-  # Environmental time-dependent priors
+  # Environmental time-dependent prior initial conditions ("-.m" = mean, "-.p" = precision, 
+  # "-.l" = lower, "-.u" = upper) and change terms ("-.mc" = mean change, "-.pc" = change precision)
 
-  for (i in 2:n.steps){
-    
   # Salinity (ppt)  
   sal.m = 35  
   sal.p = 1/0.5^2    
   sal[1] ~ dnorm(sal.m, sal.p)     
   sal.pc = 1
-  sal.sig[i] ~ dnorm(0, sal.pc)
-  sal[i] = sal[i-1] + sal.sig[i]
-  
+  sal.mc = 0
+
   # Temp in C
   tempC.m = 30   
   tempC.p = 1/10^2 
   tempC[1] ~ dnorm(tempC.m, tempC.p)     
   tempC.pc = 1
-  tempC.sig[i] ~ dnorm(0, tempC.pc)
-  tempC[i] = tempC[i-1] + tempC.sig[i]
+  tempC.mc = 0
   
   # [Ca] (mmol kg^-1)
   xca.m = 17
   xca.p = 1/0.5^2
   xca[1] ~ dnorm(xca.m, xca.p)       
   xca.pc = 0.1
-  xca.sig[i] ~ dnorm(0, xca.pc)
-  xca[i] = xca[i-1] + xca.sig[i]
+  xca.mc = 0
   
   # [Mg] (mmol kg^-1)
   xmg.m = 36
   xmg.p = 1/0.5^2
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
   xmg.pc = 0.1
-  xmg.sig[i] ~ dnorm(0, xmg.pc)
-  xmg[i] = xmg[i-1] + xmg.sig[i]
+  xmg.mc = 0
   
   # [SO4] (mmol kg^-1)
   xso4.m = 14
   xso4.p = 1/0.5^2
   xso4[1] ~ dnorm(xso4.m, xso4.p)      
   xso4.pc = 0.1
-  xso4.sig[i] ~ dnorm(0, xso4.pc)
-  xso4[i] = xso4[i-1] + xso4.sig[i]
+  xso4.mc = 0
   
   # d11B of seawater (per mille SRM-951) 
   d11Bsw.m = 38.45
   d11Bsw.p = 1/0.5^2
   d11Bsw[1] ~ dnorm(d11Bsw.m, d11Bsw.p)    
   d11Bsw.pc = 0.1
-  d11Bsw.sig[i] ~ dnorm(0, d11Bsw.pc)
-  d11Bsw[i] = d11Bsw[i-1] + d11Bsw.sig[i]
+  d11Bsw.mc = 0 
   
   # d18O of seawater (per mille SMOW) 
   d18Osw.m = -1
   d18Osw.p = 1/0.5^2
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
   d18Osw.pc = 0.1
-  d18Osw.sig[i] ~ dnorm(0, d18Osw.pc)
-  d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i] 
+  d18Osw.mc = 0
   
   # Atmospheric pCO2 (atm)
   pco2.l = 300e-6   
   pco2.u = 2500e-6   
   pco2[1] ~ dunif(pco2.l, pco2.u)    
   pco2.pc = 10e-6
-  pco2.sig[i] ~ dnorm(0, pco2.pc)
-  pco2[i] = pco2[i-1] + pco2.sig[i]
+  pco2.mc = 0
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
   dic.m = 0.0022
   dic.p = 1/0.0002^2
   dic[1] ~ dnorm(dic.m, dic.p)
   dic.pc = 0.00002
-  dic.sig[i] ~ dnorm(0, dic.pc)
+  dic.mc = 0
+  
+  
+  # Environmental time-dependent priors
+  
+  for (i in 2:n.steps){
+    
+  # Salinity (ppt)  
+  sal.sig[i] ~ dnorm(sal.mc, sal.pc)
+  sal[i] = sal[i-1] + sal.sig[i]
+  
+  # Temp in C
+  tempC.sig[i] ~ dnorm(tempC.mc, tempC.pc)
+  tempC[i] = tempC[i-1] + tempC.sig[i]
+  
+  # [Ca] (mmol kg^-1)
+  xca.sig[i] ~ dnorm(xca.mc, xca.pc)
+  xca[i] = xca[i-1] + xca.sig[i]
+  
+  # [Mg] (mmol kg^-1)
+  xmg.sig[i] ~ dnorm(xmg.mc, xmg.pc)
+  xmg[i] = xmg[i-1] + xmg.sig[i]
+  
+  # [SO4] (mmol kg^-1)
+  xso4.sig[i] ~ dnorm(xso4.mc, xso4.pc)
+  xso4[i] = xso4[i-1] + xso4.sig[i]
+  
+  # d11B of seawater (per mille SRM-951) 
+  d11Bsw.sig[i] ~ dnorm(d11Bsw.mc, d11Bsw.pc)
+  d11Bsw[i] = d11Bsw[i-1] + d11Bsw.sig[i]
+  
+  # d18O of seawater (per mille SMOW) 
+  d18Osw.sig[i] ~ dnorm(d18Osw.mc, d18Osw.pc)
+  d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i] 
+  
+  # Atmospheric pCO2 (atm)
+  pco2.sig[i] ~ dnorm(pco2.mc, pco2.pc)
+  pco2[i] = pco2[i-1] + pco2.sig[i]
+  
+  # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
+  dic.sig[i] ~ dnorm(dic.mc, dic.pc)
   dic[i] = dic[i-1] + dic.sig[i]
   # dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 + dic.sig[i]
   
   }
-
-  # Age index vector for prior time bins
-  ai.env = ceiling((ages.max - ages) / ages.bin)  
   
   
   # Time independent

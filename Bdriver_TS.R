@@ -140,11 +140,18 @@ ai.d18O <- c(clean.d18O$ai)
 ai.d18O <- unique(ai.d18O)     # vector of age indexes that contain d18O proxy data
 
 ai.all <- c(ai.d11B, ai.mgca, ai.d18O)
-ai.all <-  unique(ai.all)
+ai.prox <-  unique(ai.all)
 
 # vector of age indexes that contain at least one proxy value
 ai.all <- sort(ai.all, decreasing = FALSE) 
 
+# Age index vector for prior time bins
+ai.env = ceiling((ages.max - ages) / ages.bin)  
+
+# Prior time bin vectors for which there are proxy data (includes duplicates)
+ai.d11B.env = match(ai.d11B, ai.env)
+ai.mgca.env = match(ai.mgca, ai.env)
+ai.d18O.env = match(ai.d18O, ai.env)
 
 # Data to pass to jags
 data = list("d11Bf.data" = clean.d11B$d11B, 
@@ -157,8 +164,11 @@ data = list("d11Bf.data" = clean.d11B$d11B,
             "ages.min" = ages.min, 
             "ages" = ages, 
             "n.steps" = n.steps, 
-            "ai.prox" = ai.all, 
+            "ai.prox" = ai.prox, 
             "ai.d11B" = ai.d11B, 
+            "ai.d11B.env" = ai.d11B.env,
+            "ai.mgca.env" = ai.mgca.env,
+            "ai.d18O.env" = ai.d18O.env,
             "ai.d18O" = ai.d18O, 
             "ai.mgca" = ai.mgca, 
             "bor.Grub" = bor.Grub,
