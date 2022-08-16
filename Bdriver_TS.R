@@ -12,10 +12,6 @@ library(R2jags)
 library(openxlsx)
 library(tidyverse)
 
-# Initialize lists
-multi.out <- list()
-parms.out <- list()
-
 
 ############################################################################################
 #    INPUT DATA
@@ -120,7 +116,7 @@ parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw",
 
 # Read in proxy time series data
 input.df = "data/Input_data_TS.xlsx"
-prox.in = read.xlsx(input.df, sheet = "proxy")
+prox.in = read.xlsx(input.df, sheet = "proxy2")
 prox.in = prox.in[,c(1:6)]
 names(prox.in) = c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 
@@ -135,82 +131,82 @@ clean.d11B <- prox.in[complete.cases(prox.in$d11B), ]
 ai.d11B <- c(clean.d11B$ai)     
 ai.d11B <- unique(ai.d11B)      # vector of age indexes that contain d11B proxy data
 
-clean.MgCa <- prox.in[complete.cases(prox.in$MgCa), ]
-ai.MgCa <- c(clean.MgCa$ai)     
-ai.MgCa <- unique(ai.MgCa)      # vector of age indexes that contain Mg/Ca proxy data
+clean.mgca <- prox.in[complete.cases(prox.in$MgCa), ]
+ai.mgca <- c(clean.mgca$ai)     
+ai.mgca <- unique(ai.mgca)      # vector of age indexes that contain Mg/Ca proxy data
 
 clean.d18O <- prox.in[complete.cases(prox.in$d18O), ]
 ai.d18O <- c(clean.d18O$ai)     
 ai.d18O <- unique(ai.d18O)     # vector of age indexes that contain d18O proxy data
 
-ai.all <- c(ai.d11B, ai.MgCa, ai.d18O)
+ai.all <- c(ai.d11B, ai.mgca, ai.d18O)
 ai.all <-  unique(ai.all)
 
 # vector of age indexes that contain at least one proxy value
 ai.all <- sort(ai.all, decreasing = FALSE) 
 
 
-# Vital effects and depth habitat pressure passed to JAGS (time-independent prior parms)
-# Conditioned on calibration species specified in input spreadsheet
-for (i in 1:(length(prox.in))){
-  species.d <- prox.in$species[i]
-  if (species.d == "Grub")
-  {bor.dat <- bor.Grub
-  for.dat <-for.Grub
-  m.mean <- m.Grub
-  m.sd <- m.Grubu
-  c.mean <- c.Grub
-  c.sd <- c.Grubu
-  press.m <- Grub.press.m
-  press.sd <- Grub.press.sd} 
-  else if (species.d == "Tsac")
-  {bor.dat <- bor.Tsac
-  for.dat <-for.Tsac
-  m.mean <- m.Tsac
-  m.sd <- m.Tsacu
-  c.mean <- c.Tsac
-  c.sd <- c.Tsacu
-  press.m <- Tsac.press.m
-  press.sd <- Tsac.press.sd} 
-  else if (species.d == "Ouni")
-  {bor.dat <- bor.Ouni
-  for.dat <-for.Ouni
-  m.mean <- m.Ouni
-  m.sd <- m.Ouniu
-  c.mean <- c.Ouni
-  c.sd <- c.Ouniu
-  press.m <- Ouni.press.m
-  press.sd <- Ouni.press.sd} 
-  else if (species.d == "borate")
-  {bor.dat <- bor.borate
-  for.dat <-for.borate
-  m.mean <- m.borate
-  m.sd <- m.borateu
-  c.mean <- c.borate
-  c.sd <- c.borateu
-  press.m <- bor.press.m
-  press.sd <- bor.press.sd} 
-
-data = list("d11Bf.data" = clean.d11B$d11B, "d11Bfu.data" = clean.d11B$d11Bsd, "d18Of.data" = clean.d18O$d18O, "mgcaf.data" = clean.MgCa$MgCa,
-            "ages.bin" = ages.bin, "ages.max" = ages.max, "ages.min" = ages.min, "ages" = ages, "n.steps" = n.steps, 
-            "ai.prox" = ai.all, "ai.d11B" = ai.d11B, "ai.d18O" = ai.d18O, "ai.MgCa" = ai.MgCa, "press.m" = press.m, 
-            "press.sd" = press.sd, "d11Bcb" = bor.dat, "d11Bcfo" = for.dat, "m.mean" = m.mean, "m.sd" = m.sd, 
-            "c.mean" = c.mean, "c.sd" = c.sd, "seccal" = seccal, "seccal.u" = seccal.u, "Dd18Oseccal" = Dd18Oseccal, 
-            "c.correction" = c.correction, "Hp.mean" = Hp.mean, "Hp.sd" = Hp.sd, "Bmod.mean" = Bmod.mean, 
-            "Bmod.sd" = Bmod.sd, "A.mean" = A.mean, "A.sd" = A.sd)
+# Data to pass to jags
+data = list("d11Bf.data" = clean.d11B$d11B, 
+            "d11Bfu.data" = clean.d11B$d11Bsd, 
+            "d18Of.data" = clean.d18O$d18O, 
+            "mgcaf.data" = clean.mgca$MgCa,
+            "spec.in" = prox.in$species,
+            "ages.bin" = ages.bin, 
+            "ages.max" = ages.max, 
+            "ages.min" = ages.min, 
+            "ages" = ages, 
+            "n.steps" = n.steps, 
+            "ai.prox" = ai.all, 
+            "ai.d11B" = ai.d11B, 
+            "ai.d18O" = ai.d18O, 
+            "ai.mgca" = ai.mgca, 
+            "bor.Grub" = bor.Grub,
+            "for.Grub" = for.Grub,
+            "m.Grub" = m.Grub,
+            "m.Grubu" = m.Grubu,
+            "c.Grub" = c.Grub,
+            "c.Grubu" = c.Grubu,
+            "Grub.press.m" = Grub.press.m, 
+            "Grub.press.sd" = Grub.press.sd,
+            "bor.Tsac" = bor.Tsac,
+            "for.Tsac" = for.Tsac,
+            "m.Tsac" = m.Tsac,
+            "m.Tsacu" = m.Tsacu,
+            "c.Tsac" = c.Tsac,
+            "c.Tsacu" = c.Tsacu,
+            "Tsac.press.m" = Tsac.press.m, 
+            "Tsac.press.sd" = Tsac.press.sd,
+            "bor.Ouni" = bor.Ouni,
+            "for.Ouni" = for.Ouni,
+            "m.Ouni" = m.Ouni,
+            "m.Ouniu" = m.Ouniu,
+            "c.Ouni" = c.Ouni,
+            "c.Ouniu" = c.Ouniu,
+            "Ouni.press.m" = Ouni.press.m, 
+            "Ouni.press.sd" = Ouni.press.sd,
+            "bor.borate" = bor.borate,
+            "for.borate" = for.borate,
+            "m.borate" = m.borate,
+            "m.borateu" = m.borateu,
+            "c.borate" = c.borate,
+            "c.borateu" = c.borateu,
+            "borate.press.m" = bor.press.m,
+            "borate.press.sd" = bor.press.sd,
+            "seccal" = seccal, 
+            "seccal.u" = seccal.u, 
+            "Dd18Oseccal" = Dd18Oseccal, 
+            "c.correction" = c.correction, 
+            "Hp.mean" = Hp.mean, 
+            "Hp.sd" = Hp.sd, 
+            "Bmod.mean" = Bmod.mean, 
+            "Bmod.sd" = Bmod.sd, 
+            "A.mean" = A.mean, 
+            "A.sd" = A.sd)
 
 # Run the inversion
 jout = jags(model.file = "boronPSM_TS_inv.R", parameters.to.save = parms,
             data = data, inits = NULL, n.chains = 3, n.iter = 1e4,
             n.burnin = 1e3, n.thin = 10)
-
-# Store datum output in compiled data structure
-multi.out[[i]] <- jout
-parms.out[[i]] <- jout$BUGSoutput$summary
-
-}
-
-
-
 
 
