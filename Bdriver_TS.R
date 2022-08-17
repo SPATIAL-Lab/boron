@@ -116,7 +116,7 @@ parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw",
 
 # Read in proxy time series data
 input.df = "data/Input_data_TS.xlsx"
-prox.in = read.xlsx(input.df, sheet = "proxy2")
+prox.in = read.xlsx(input.df, sheet = "proxy4")
 prox.in = prox.in[,c(1:6)]
 names(prox.in) = c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 
@@ -208,8 +208,12 @@ data = list("d11Bf.data" = clean.d11B$d11B,
             "A.sd" = A.sd)
 
 # Run the inversion
-jout = jags(model.file = "boronPSM_TS_inv.R", parameters.to.save = parms,
-            data = data, inits = NULL, n.chains = 3, n.iter = 1e4,
-            n.burnin = 1e3, n.thin = 10)
 
+jout = jags(model.file = "boronPSM_TS_inv_pH.R", parameters.to.save = parms,
+            data = data, inits = NULL, n.chains = 3, n.iter = 100,
+            n.burnin = 1, n.thin = 10)
+
+ # jout = jags(model.file = "boronPSM_TS_inv_pH.R", parameters.to.save = parms,
+ #             data = data, inits = NULL, n.chains = 3, n.iter = 1e4,
+ #             n.burnin = 1e3, n.thin = 10)
 
