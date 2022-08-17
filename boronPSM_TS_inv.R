@@ -70,7 +70,7 @@ model{
   R <- 83.131 # constant (cm^3 bar mol^-1 K^-1)
   
     
-    for (i in 1:length(ai.prox)){
+  for (i in 1:length(ai.prox)){
     # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
     
     # Calculate equil. constants using salinity and temp:
@@ -176,49 +176,49 @@ model{
   xca.m = 17
   xca.p = 1/0.5^2
   xca[1] ~ dnorm(xca.m, xca.p)       
-  xca.pc = 0.1
+  xca.pc = 1/0.1^2
   xca.mc = 0
   
   # [Mg] (mmol kg^-1)
   xmg.m = 36
   xmg.p = 1/0.5^2
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
-  xmg.pc = 0.1
+  xmg.pc = 1/0.1^2
   xmg.mc = 0
   
   # [SO4] (mmol kg^-1)
   xso4.m = 14
   xso4.p = 1/0.5^2
   xso4[1] ~ dnorm(xso4.m, xso4.p)      
-  xso4.pc = 0.1
+  xso4.pc = 1/0.1^2
   xso4.mc = 0
   
   # d11B of seawater (per mille SRM-951) 
   d11Bsw.m = 38.45
   d11Bsw.p = 1/0.5^2
   d11Bsw[1] ~ dnorm(d11Bsw.m, d11Bsw.p)    
-  d11Bsw.pc = 0.1
+  d11Bsw.pc = 1/0.1^2
   d11Bsw.mc = 0 
   
   # d18O of seawater (per mille SMOW) 
   d18Osw.m = -1
   d18Osw.p = 1/0.5^2
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
-  d18Osw.pc = 0.1
+  d18Osw.pc = 1/0.1^2
   d18Osw.mc = 0
   
   # Atmospheric pCO2 (atm)
   pco2.l = 300e-6   
   pco2.u = 2500e-6   
   pco2[1] ~ dunif(pco2.l, pco2.u)    
-  pco2.pc = 1e-6
+  pco2.pc = 1/1e-6^2
   pco2.mc = 0
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
   dic.m = 0.0022
   dic.p = 1/0.0002^2
   dic[1] ~ dnorm(dic.m, dic.p)
-  dic.pc = 0.000002
+  dic.pc = 1/0.000002^2
   dic.mc = 0
   
   
