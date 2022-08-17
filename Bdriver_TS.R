@@ -125,33 +125,33 @@ ages = seq(ages.max, ages.min, by = 0 - ages.bin) - ages.bin / 2
 n.steps <- (ages.max - ages.min) / ages.bin
 ages.len = length(ages)
 prox.in$ai = ceiling((ages.max - prox.in$age) / ages.bin) 
-prox.in <- prox.in %>% mutate_all(na_if,"")
 
 clean.d11B <- prox.in[complete.cases(prox.in$d11B), ]
-ai.d11B <- c(clean.d11B$ai)     
-ai.d11B <- unique(ai.d11B)      # vector of age indexes that contain d11B proxy data
-
 clean.mgca <- prox.in[complete.cases(prox.in$MgCa), ]
-ai.mgca <- c(clean.mgca$ai)     
-ai.mgca <- unique(ai.mgca)      # vector of age indexes that contain Mg/Ca proxy data
-
 clean.d18O <- prox.in[complete.cases(prox.in$d18O), ]
+
+# Vector of age indexes that contain d11B proxy data (with duplicates)
+ai.d11B <- c(clean.d11B$ai)    
+
+# Vector of age indexes that contain Mg/Ca proxy data
+ai.mgca <- c(clean.mgca$ai)     
+
+# Vector of age indexes that contain d18O proxy data
 ai.d18O <- c(clean.d18O$ai)     
-ai.d18O <- unique(ai.d18O)     # vector of age indexes that contain d18O proxy data
 
 ai.all <- c(ai.d11B, ai.mgca, ai.d18O)
-ai.prox <-  unique(ai.all)
 
-# vector of age indexes that contain at least one proxy value
-ai.all <- sort(ai.all, decreasing = FALSE) 
+# Index vector which contains each environmental time step that has one or more proxy data
+ai.prox <-  unique(ai.all)     
+ai.prox <- sort(ai.prox, decreasing = FALSE) 
 
 # Age index vector for prior time bins
 ai.env = ceiling((ages.max - ages) / ages.bin)  
 
 # Prior time bin vectors for which there are proxy data (includes duplicates)
-ai.d11B.env = match(ai.d11B, ai.env)
-ai.mgca.env = match(ai.mgca, ai.env)
-ai.d18O.env = match(ai.d18O, ai.env)
+ai.d11B = match(ai.d11B, ai.prox)
+ai.mgca = match(ai.mgca, ai.prox)
+ai.d18O = match(ai.d18O, ai.prox)
 
 # Data to pass to jags
 data = list("d11Bf.data" = clean.d11B$d11B, 
@@ -159,16 +159,9 @@ data = list("d11Bf.data" = clean.d11B$d11B,
             "d18Of.data" = clean.d18O$d18O, 
             "mgcaf.data" = clean.mgca$MgCa,
             "spec.in" = prox.in$species,
-            "ages.bin" = ages.bin, 
-            "ages.max" = ages.max, 
-            "ages.min" = ages.min, 
-            "ages" = ages, 
             "n.steps" = n.steps, 
             "ai.prox" = ai.prox, 
             "ai.d11B" = ai.d11B, 
-            "ai.d11B.env" = ai.d11B.env,
-            "ai.mgca.env" = ai.mgca.env,
-            "ai.d18O.env" = ai.d18O.env,
             "ai.d18O" = ai.d18O, 
             "ai.mgca" = ai.mgca, 
             "bor.Grub" = bor.Grub,

@@ -9,16 +9,16 @@ model{
   d18Of.p = 1/0.1^2
   
   for (i in 1:length(ai.d11B)){
-  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B.env[i]], d11Bf.p[i])
+  d11Bf.data[i] ~ dnorm(d11Bf[ai.d11B[i]], d11Bf.p[i])
   d11Bf.p[i] = 1/d11Bfu.data[i]^2
   }
   
   for (i in 1:length(ai.mgca)){
-  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca.env[i]], mgcaf.p)
+  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p)
   }
   
   for (i in 1:length(ai.d18O)){
-  d18Of.data[i] ~ dnorm(d18Of[ai.d18O.env[i]], d18Of.p)
+  d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
   }
   
 
@@ -211,14 +211,14 @@ model{
   pco2.l = 300e-6   
   pco2.u = 2500e-6   
   pco2[1] ~ dunif(pco2.l, pco2.u)    
-  pco2.pc = 10e-6
+  pco2.pc = 1e-6
   pco2.mc = 0
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
   dic.m = 0.0022
   dic.p = 1/0.0002^2
   dic[1] ~ dnorm(dic.m, dic.p)
-  dic.pc = 0.00002
+  dic.pc = 0.000002
   dic.mc = 0
   
   
