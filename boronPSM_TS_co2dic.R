@@ -135,10 +135,10 @@ model{
     t1[i] <- 10^(pKsB[i]-pH[i])
     d11Bb[i] <- ((t1[i]*epsilon)-(t1[i]*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1[i]*alpha)+1))
     
-    c.final1[i] <- c.1 + c.correction # adjusts final c value if desired - correction specified in driver
+    c.final1[i] <- c.1 + c.correction1 # adjusts final c value if desired - correction specified in driver
     d11Bf.1[i] <- m.1*d11Bb[i]+ (c.final1[i])
    
-    c.final2[i] <- c.2 + c.correction # adjusts final c value if desired - correction specified in driver
+    c.final2[i] <- c.2 + c.correction2 # adjusts final c value if desired - correction specified in driver
     d11Bf.2[i] <- m.2*d11Bb[i]+ (c.final2[i])
     
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)

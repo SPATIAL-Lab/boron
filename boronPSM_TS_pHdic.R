@@ -22,9 +22,9 @@ model{
   mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p)
   }
   
-  for (i in 1:length(ai.d18O)){
-  d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
-  }
+  # for (i in 1:length(ai.d18O)){
+  # d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
+  # }
   
 
 ############################################################################################
@@ -127,10 +127,10 @@ model{
     t1[i] <- 10^(pKsB[i]-pH[ai.prox[i]])
     d11Bb[i] <- ((t1[i]*epsilon)-(t1[i]*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1[i]*alpha)+1))
     
-    c.final.1[i] <- c.1 + c.correction # adjusts final c value if desired - correction specified in driver
+    c.final.1[i] <- c.1 + c.correction1 # adjusts final c value if desired - correction specified in driver
     d11Bf.1[i] <- m.1*d11Bb[i]+ (c.final.1[i])
     
-    c.final.2[i] <- c.2 + c.correction # adjusts final c value if desired - correction specified in driver
+    c.final.2[i] <- c.2 + c.correction2 # adjusts final c value if desired - correction specified in driver
     d11Bf.2[i] <- m.2*d11Bb[i]+ (c.final.2[i])     
     
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
@@ -146,7 +146,7 @@ model{
     Bcorr[i] <- ((mgcasw[i]^Hp)/(mgcaswm^Hp)) * Bmod
     mgca_corr[i] <- Bcorr[i]*(exp(A*tempC[ai.prox[i]]))
     pHcorrco[i] ~ dnorm(0.70, (1/0.09^2))
-    mgca_sal[i] <- mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco[i])
+    mgca_sal[i] <- mgca_corr[i] #/ (1-(8.05-pH[ai.prox[i]])*pHcorrco[i])
     salcorrco[i] ~ dnorm(0.042, (1/0.004^2))
     mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco[i])
     
@@ -163,8 +163,8 @@ model{
   sal.m = 35  
   sal.p = 1/0.5^2    
   sal[1] ~ dnorm(sal.m, sal.p)     
-  sal.pc = 1e6
-  sal.mc = 1
+  sal.pc = 1e10
+  sal.mc = 0
 
   # Temp in C
   tempC.m = 30   
@@ -185,7 +185,7 @@ model{
   xmg.p = 1/0.5^2
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
   xmg.pc = 1e6
-  xmg.mc = -2.958*ages.bin  # -4.819*ages.bin large decrease
+  xmg.mc = 0 # -2.958*ages.bin  # -4.819*ages.bin large decrease
   
   # [SO4] (mmol kg^-1)
   xso4.m = 14
@@ -205,21 +205,21 @@ model{
   d18Osw.m = -1
   d18Osw.p = 1/0.5^2
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
-  d18Osw.pc = 1/0.01^2
+  d18Osw.pc = 1/0.001^2
   d18Osw.mc = 0
   
   # pH
-  pH.l = 7.0   
-  pH.u = 8.5   
+  pH.l = 7.5   
+  pH.u = 8.0   
   pH[1] ~ dunif(pH.l, pH.u)   
-  pH.pc = 0.1
-  pH.mc = 1
+  pH.pc = 1e2
+  pH.mc = 0
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
   dic.m = 0.0022
   dic.p = 1/0.0001^2
   dic[1] ~ dnorm(dic.m, dic.p)
-  dic.pc = 1
+  dic.pc = 1e12
   dic.mc = 0
   
   
@@ -228,8 +228,8 @@ model{
   for (i in 2:n.steps){
     
   # Salinity (ppt)  
-  sal.sig[i] ~ dnorm(sal.mc, sal.pc)I(0.95,1.05)
-  sal[i] = sal[i-1] * sal.sig[i]
+  sal.sig[i] ~ dnorm(sal.mc, sal.pc)#I(0.95,1.05)
+  sal[i] = sal[i-1] + sal.sig[i]
   
   # Temp in C
   tempC.sig[i] ~ dnorm(tempC.mc, tempC.pc)
@@ -256,13 +256,13 @@ model{
   d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i] 
   
   # pH
-  pH.sig[i] ~ dnorm(pH.mc, pH.pc)I(0.9,1.1)
-  pH[i] = pH[i-1] * pH.sig[i]
+  pH.sig[i] ~ dnorm(pH.mc, pH.pc)
+  pH[i] = pH[i-1] + pH.sig[i]
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
   dic.sig[i] ~ dnorm(dic.mc, dic.pc)
-  # dic[i] = dic[i-1] + dic.sig[i]
-  dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 #+ dic.sig[i]
+  dic[i] = dic[i-1] + dic.sig[i]
+  #dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 #+ dic.sig[i]
   
   }
   
@@ -277,8 +277,8 @@ model{
     c.2 ~ dnorm(c.Tsac, 1/c.Tsacu^2) 
     
     # Pressure (bar)
-    press ~ dnorm(10, press.p)    
-    press.p = 1/2^2 
+    press ~ dnorm(6, press.p)    
+    press.p = 1/1^2 
     
 }
 

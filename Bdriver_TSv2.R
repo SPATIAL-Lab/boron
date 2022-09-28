@@ -18,9 +18,9 @@ library(tidyverse)
 ############################################################################################    
 
 # Setup age range and bins 
-ages.bin = 0.01   # Myr; DATA FOR JAGS
-ages.max = 59     # Myr; DATA FOR JAGS
-ages.min = 53     # Myr; DATA FOR JAGS
+ages.bin = 0.005   # Myr; DATA FOR JAGS
+ages.max = 56.2     # Myr; DATA FOR JAGS
+ages.min = 55.44     # Myr; DATA FOR JAGS
 
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
@@ -33,19 +33,19 @@ Dd18Oseccal = 3.85 # Calculated following Edgar et al. (2015); DATA FOR JAGS
 # # Pressure prior (ie., depth habitat) in bar for each of the modern species' calibration options 
 # 
 # # G. ruber calibrated species' associated pressures at habitat depth 
-# Grub.press.m = 10        
-# Grub.press.sd = 2     
+# Grub.press.m =  5        
+# Grub.press.sd = 1     
 # 
 # # T. sacculifer calibrated species' associated pressures at habitat depth 
-# Tsac.press.m = 10        
-# Tsac.press.sd = 2     
+# Tsac.press.m = 7        
+# Tsac.press.sd = 1     
 # 
 # # O. universa calibrated species' associated pressures at habitat depth 
 # Ouni.press.m = 10        
-# Ouni.press.sd = 2   
+# Ouni.press.sd = 4   
 # 
 # # Borate calibrated species' associated pressures at habitat depth 
-# bor.press.m = 10        
+# bor.press.m = 6       
 # bor.press.sd = 2     
 
 
@@ -69,12 +69,12 @@ A.sd = 0.01         # DATA FOR JAGS
 # Modern d11Bforam-d11Bborate "vital effect" calibration data 
 
 # You can adjust the offset for the final value of 'c' here if you wish to see the effect
-c.correction = 0   # DATA FOR JAGS
-
+c.correction1 = -3.3   # DATA FOR JAGS
+c.correction2 = -1.9
 # G. ruber 
 # bor.Grub <- c(14.22, 16.66, 19.76)    # Henehan et al. (2013) G. ruber data (borate)
 # for.Grub <- c(18.2, 19.63, 21.46)     # Henehan et al. (2013) G. ruber data (calcite)
-m.Grub = 0.6   # mean "m" value for G. ruber distribution 
+m.Grub = 0.62   # mean "m" value for G. ruber distribution 
 m.Grubu = 0.0055   # s.d. for "c" value for G. ruber distribution
 c.Grub = 9.52  # mean "c" value for G. ruber distribution 
 c.Grubu = 1.01 # s.d. for "c" value for G. ruber distribution
@@ -116,13 +116,14 @@ parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw",
 
 # Read in proxy time series data
 input.df = "data/Input_data_TS.xlsx"
-prox.in = read.xlsx(input.df, sheet = "proxy")
+prox.in = read.xlsx(input.df, sheet = "petm")
 prox.in = prox.in[,c(1:6)]
 names(prox.in) = c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 
 # Age index proxy data
 ages = head(seq(ages.max, ages.min, by = 0 - ages.bin) - ages.bin / 2, -1)
 n.steps <- (ages.max - ages.min) / ages.bin
+n.steps <- round(n.steps, digits=0)
 ages.len = length(ages)
 prox.in$ai = ceiling((ages.max - prox.in$age) / ages.bin) 
 
@@ -185,7 +186,8 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "seccal" = seccal, 
             "seccal.u" = seccal.u, 
             "Dd18Oseccal" = Dd18Oseccal, 
-            "c.correction" = c.correction, 
+            "c.correction1" = c.correction1,
+            "c.correction2" = c.correction2,
             "Hp.mean" = Hp.mean, 
             "Hp.sd" = Hp.sd, 
             "Bmod.mean" = Bmod.mean, 
@@ -196,8 +198,8 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
 # Run the inversion
 
 jout = jags(model.file = "boronPSM_TS_pHdic.R", parameters.to.save = parms,
-            data = data, inits = NULL, n.chains = 3, n.iter = 100,
-            n.burnin = 1, n.thin = 10)
+            data = data, inits = NULL, n.chains = 3, n.iter = 1e3,
+            n.burnin = 500, n.thin = 1)
 
  # jout = jags(model.file = "boronPSM_TS_inv_pH.R", parameters.to.save = parms,
  #             data = data, inits = NULL, n.chains = 3, n.iter = 1e4,

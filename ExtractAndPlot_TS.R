@@ -15,7 +15,9 @@ parms.out <- data.frame(parms.out)
 
 pco2.v <- paste("pco2[", step.vector, "]", sep="")
 pco2.out <- parms.out[c(pco2.v),]
-pco2.out <- data.frame(ages,pco2.out)
+pco2.out <- na.omit(pco2.out)
+pco2.out <- data.frame(ages[ai.prox],pco2.out)
+pco2.out <- na.omit(pco2.out)
 
 dic.v <- paste("dic[", step.vector, "]", sep="")
 dic.out <- parms.out[c(dic.v),]
@@ -63,72 +65,72 @@ press.out <- parms.out[c("press"),]
 # Plot parms of interest
 
 ggplot() + 
-  geom_pointrange(data = d11Bsw.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = d11Bsw.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(34,44) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "d11Bsw") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = d18Osw.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = d18Osw.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(-3,2) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "d18Osw") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = xca.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = xca.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(15,25) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "[Ca]") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = xmg.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = xmg.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(30,70) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "[Mg]") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = xso4.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = xso4.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(10,22) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "[SO4]") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = tempC.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
-  ylim(20,40) +
-  xlim(53,59) +
+  geom_pointrange(data = tempC.out, mapping = aes(x=ages, y=mean, ymin=X2.5., ymax=X97.5.)) +
+  ylim(10,40) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "temp (C)") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = sal.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = sal.out, mapping = aes(x=ages,  y=mean, ymin=X2.5., ymax=X97.5.)) +
   ylim(33,37) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "salinity (ppt)") +  
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = pco2.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
-  ylim(0,0.002) +
-  xlim(53,59) +
+  geom_pointrange(data = pco2.out, mapping = aes(x=ages.ai.prox., y=mean,  ymin=X2.5., ymax=X97.5.)) +
+  ylim(0,0.006) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "pCO2 (atm)") +   
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = dic.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
+  geom_pointrange(data = dic.out, mapping = aes(x=ages, y=mean,  ymin=X2.5., ymax=X97.5.)) +
   ylim(0.0015, 0.003) +
-  xlim(53,59) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "DIC (mol/kg)") +
   theme_bw()
 
 ggplot() + 
-  geom_pointrange(data = pH.out, mapping = aes(x=ages, y=mean, ymin=X25., ymax=X75.)) +
-  ylim(7.4, 8.4) +
-  xlim(53,59) +
+  geom_pointrange(data = pH.out, mapping = aes(x=ages, y=mean,  ymin=X2.5., ymax=X97.5.)) +
+  ylim(6.8, 8.4) +
+  xlim(56.2,55.7) +
   labs(x= "age (Ma)", y = "pH") +
   theme_bw()
 
