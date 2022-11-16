@@ -17,14 +17,17 @@ library(tidyverse)
 #    INPUT DATA
 ############################################################################################    
 
-# Setup age range and bins 
-ages.bin = 0.005   # Myr; DATA FOR JAGS
-ages.max = 56.2     # Myr; DATA FOR JAGS
-ages.min = 55.44     # Myr; DATA FOR JAGS
+# Input pH correction on Mg/Ca as the percent change per 0.1 pH unit 
+# (e.g., Hollis et al., 2019 recommend 7% per 0.1 pH unit, plus 1sd unc = 0.9%)
+pHpccorr = 0 # 7
+pHpccorrsd = 10^-30 # 0.9
+
+pHpccorr = pHpccorr/10
+pHpccorrsd = pHpccorrsd/10
 
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
-seccal = 65        # Percent recrystallized; DATA FOR JAGS
+seccal = 70      # Percent recrystallized; DATA FOR JAGS
 seccal.u = 10      # 1sd % recrystallized; DATA FOR JAGS
 Dd18Oseccal = 3.85 # Calculated following Edgar et al. (2015); DATA FOR JAGS
 
@@ -61,7 +64,7 @@ Bmod.mean = 0.38    # DATA FOR JAGS
 Bmod.sd = 0.02      # DATA FOR JAGS
 
 # Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evanset al., 2016)
-A.mean = 0.07       # DATA FOR JAGS
+A.mean = 0.09       # DATA FOR JAGS
 A.sd = 0.01         # DATA FOR JAGS
 
 
@@ -69,8 +72,8 @@ A.sd = 0.01         # DATA FOR JAGS
 # Modern d11Bforam-d11Bborate "vital effect" calibration data 
 
 # You can adjust the offset for the final value of 'c' here if you wish to see the effect
-c.correction1 = -3.3   # DATA FOR JAGS
-c.correction2 = -1.9
+c.correction1 = -3.76   # Correction set to get c = 5.76 for M. vel (i.e., intercept when PETM values are plotted versus borate d11B [calc'd from A. sol as G. ruber])
+c.correction2 = -1.9   # correction set to align PETM d11Borate reconstruction for the two species
 # G. ruber 
 # bor.Grub <- c(14.22, 16.66, 19.76)    # Henehan et al. (2013) G. ruber data (borate)
 # for.Grub <- c(18.2, 19.63, 21.46)     # Henehan et al. (2013) G. ruber data (calcite)
@@ -111,21 +114,56 @@ parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw",
 
 
 ############################################################################################
-#    INVERSION DRIVER
-############################################################################################    
+#    INVERSION DRIVER - 1st data set 
+############################################################################################
+
+# Input prior mean and precision estimates 
+
+sal.m = 35  
+sal.p = 1/0.5^2    
+
+tempC.m = 30   
+tempC.p = 1/5^2 
+
+xca.m = 21.5842 # calculated using Holland et al., 2020 @ 59 Ma
+xca.p = 1/0.5^2
+
+xmg.m = 37 
+xmg.p = 1/0.5^2
+
+xso4.m = 14
+xso4.p = 1/0.5^2
+
+d11Bsw.m = 38.45
+d11Bsw.p = 1/0.5^2
+
+d18Osw.m = -1
+d18Osw.p = 1/0.1^2
+
+pH.l = 7.4   
+pH.u = 7.8 
+
+dic.m = 0.00205
+dic.p = 1/0.00005^2
 
 # Read in proxy time series data
 input.df = "data/Input_data_TS.xlsx"
-prox.in = read.xlsx(input.df, sheet = "petm")
+prox.in = read.xlsx(input.df, sheet = "ShatskyPETM")
 prox.in = prox.in[,c(1:6)]
 names(prox.in) = c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 
+# Setup age range and bins 
+dt = 5   # kyr; DATA FOR JAGS
+ages.max = 56125     # kyr; DATA FOR JAGS
+ages.min = 55440     # kyr; DATA FOR JAGS
+
+
 # Age index proxy data
-ages = head(seq(ages.max, ages.min, by = 0 - ages.bin) - ages.bin / 2, -1)
-n.steps <- (ages.max - ages.min) / ages.bin
+ages = head(seq(ages.max, ages.min, by = 0 - dt) - dt / 2, -1)
+n.steps <- (ages.max - ages.min) / dt
 n.steps <- round(n.steps, digits=0)
 ages.len = length(ages)
-prox.in$ai = ceiling((ages.max - prox.in$age) / ages.bin) 
+prox.in$ai = ceiling((ages.max - prox.in$age) / dt) 
 
 clean.d11B <- prox.in[complete.cases(prox.in$d11B), ]
 # parse clean.d11B by clean.d11B$species (clean.d11B1, clean.d11B2)
@@ -153,7 +191,7 @@ ai.prox <-  unique(ai.all)
 ai.prox <- sort(ai.prox, decreasing = FALSE) 
 
 # Age index vector for prior time bins
-ai.env = ceiling((ages.max - ages) / ages.bin)  
+ai.env = ceiling((ages.max - ages) / dt)  
 
 # Prior time bin vectors for which there are proxy data (includes duplicates)
 ai.d11B1 = match(ai.d11B1, ai.prox)
@@ -169,7 +207,7 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "d18Of.data" = clean.d18O$d18O, 
             "mgcaf.data" = clean.mgca$MgCa,
             "n.steps" = n.steps,
-            "ages.bin" = ages.bin,
+            "dt" = dt,
             "ai.prox" = ai.prox, 
             "ai.d11B1" = ai.d11B1,
             "ai.d11B2" = ai.d11B2,
@@ -193,15 +231,32 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "Bmod.mean" = Bmod.mean, 
             "Bmod.sd" = Bmod.sd, 
             "A.mean" = A.mean, 
-            "A.sd" = A.sd)
+            "A.sd" = A.sd,
+            "pHpccorr" = pHpccorr,
+            "pHpccorrsd" = pHpccorrsd,
+            "sal.m" = sal.m,  
+            "sal.p" = sal.p,   
+            "tempC.m" = tempC.m, 
+            "tempC.p" = tempC.p,
+            "xca.m" = xca.m,
+            "xca.p" = xca.p,
+            "xmg.m" = xmg.m,
+            "xmg.p" = xmg.p,
+            "xso4.m" = xso4.m,
+            "xso4.p" = xso4.p,
+            "d11Bsw.m" = d11Bsw.m,
+            "d11Bsw.p" = d11Bsw.p,
+            "d18Osw.m" = d18Osw.m,
+            "d18Osw.p" = d18Osw.p,
+            "pH.l" = pH.l,  
+            "pH.u" = pH.u, 
+            "dic.m" = dic.m,
+            "dic.p" = dic.p)
 
 # Run the inversion
 
-jout = jags(model.file = "boronPSM_TS_pHdic.R", parameters.to.save = parms,
+jout = jags.parallel(model.file = "boronPSM_TS_pHdicv3.R", parameters.to.save = parms,
             data = data, inits = NULL, n.chains = 3, n.iter = 1e3,
             n.burnin = 500, n.thin = 1)
 
- # jout = jags(model.file = "boronPSM_TS_inv_pH.R", parameters.to.save = parms,
- #             data = data, inits = NULL, n.chains = 3, n.iter = 1e4,
- #             n.burnin = 1e3, n.thin = 10)
 

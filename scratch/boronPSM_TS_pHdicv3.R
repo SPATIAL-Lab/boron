@@ -21,11 +21,11 @@ model{
   for (i in 1:length(ai.mgca)){
   mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p)
   }
-  
-  # for (i in 1:length(ai.d18O)){
-  # d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
-  # }
-  
+
+  for (i in 1:length(ai.d18O)){
+  d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
+  }
+
 
 ############################################################################################
 #    PROXY SYSTEM MODEL
@@ -68,7 +68,7 @@ model{
   Bmod ~ dnorm(Bmod.m, Bmod.p) # modern pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
   Bmod.m = Bmod.mean  
   Bmod.p = 1/Bmod.sd^2
-  A ~ dnorm(A.m, A.p) # Exponenital constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
+  A ~ dnorm(A.m, A.p) # Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
   A.m = A.mean    
   A.p = 1/A.sd^2
   
@@ -135,17 +135,17 @@ model{
     
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
     sw.sens[i] ~ dnorm(0.558, 1/0.03^2) # Uncertainty represents std dev of regression slope in GEOSECS obs. reported in Charles and Fairbanks (1990)
-    d18Osw.sc[i] <- d18Osw[ai.prox[i]] + (sw.sens[i]*(sal[ai.prox[i]]-35)) 
+    d18Osw.sc[i] <- d18Osw[ai.prox[i]] + (sw.sens[i]*(sal[ai.prox[i]]-35))
     d18Oswpdb[i] <- d18Osw.sc[i] -0.27
     d18Of.pr[i] <- d18Oswpdb[i] + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC[ai.prox[i]])))^0.5))/(2*0.09))
     indexop[i] ~ dnorm((seccal/100), (1/(seccal.u/100)^2))
     d18Of[i] <- d18Of.pr[i] + indexop[i]*Dd18Oseccal
-    
+
     # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
     mgcasw[i] <- (xmg[ai.prox[i]]/xca[ai.prox[i]])     
     Bcorr[i] <- ((mgcasw[i]^Hp)/(mgcaswm^Hp)) * Bmod
     mgca_corr[i] <- Bcorr[i]*(exp(A*tempC[ai.prox[i]]))
-    pHcorrco[i] ~ dnorm(0.70, (1/0.09^2))
+    pHcorrco[i] ~ dnorm(pHpccorr, (1/pHpccorrsd^2))
     mgca_sal[i] <- mgca_corr[i] #/ (1-(8.05-pH[ai.prox[i]])*pHcorrco[i])
     salcorrco[i] ~ dnorm(0.042, (1/0.004^2))
     mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco[i])
@@ -156,113 +156,118 @@ model{
 #    ENVIRONMENTAL MODEL
 ############################################################################################    
  
-  # Environmental time-dependent prior initial conditions ("-.m" = mean, "-.p" = precision, 
-  # "-.l" = lower, "-.u" = upper) and change terms ("-.mc" = mean change, "-.pc" = change precision)
+  # Environmental time-dependent prior initial conditions 
+        # .phi = temporal autocorrelation of a parameter
+        # .sig = random walk error term (i.e., eqn 5 in Bowen et al., 20202 CotP)
+        # .tau = error precision for dt = 1
+        # .pc = error precision of random walk error term (i.e., .sig)
 
+  
   # Salinity (ppt)  
-  sal.m = 35  
-  sal.p = 1/0.5^2    
-  sal[1] ~ dnorm(sal.m, sal.p)     
-  sal.pc = 1e10
-  sal.mc = 0
-
+  sal[1] ~ dnorm(sal.m, sal.p)  
+  sal.phi ~ dunif(0,1)           
+  sal.sig[1] = 0                 
+  sal.tau = 1/0.00005^2          
+  sal.pc = sal.tau*((1-sal.phi^2)/(1-sal.phi^(2*dt))) 
+  
   # Temp in C
-  tempC.m = 30   
-  tempC.p = 1/5^2 
-  tempC[1] ~ dnorm(tempC.m, tempC.p)     
-  tempC.pc = 1
-  tempC.mc = 0
-  
+  tempC[1] ~ dnorm(tempC.m, tempC.p) 
+  tempC.phi ~ dunif(0,1)
+  tempC.sig[1] = 0 
+  tempC.tau = 0.1
+  tempC.pc = tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt))) 
+    
   # [Ca] (mmol kg^-1)
-  xca.m = 21.5842 # calculated using Holland et al., 2020 @ 59 Ma
-  xca.p = 1/0.5^2
-  xca[1] ~ dnorm(xca.m, xca.p)       
-  xca.pc = 1e6
-  xca.mc = -0.1938*ages.bin
-  
+  xca[1] ~ dnorm(xca.m, xca.p)
+  xca.phi ~ dunif(0,1)
+  xca.sig[1] = 0 - 0.0001938*dt
+  xca.tau = 1e6
+  xca.pc = xca.tau*((1-xca.phi^2)/(1-xca.phi^(2*dt)))
+
   # [Mg] (mmol kg^-1)
-  xmg.m = 63.783  # 68.090 large decrease
-  xmg.p = 1/0.5^2
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
-  xmg.pc = 1e6
-  xmg.mc = 0 # -2.958*ages.bin  # -4.819*ages.bin large decrease
-  
+  xmg.phi ~ dunif(0,1) 
+  xmg.sig[1] = 0 
+  xmg.tau = 1e6
+  xmg.pc = xmg.tau*((1-xmg.phi^2)/(1-xmg.phi^(2*dt)))
+    
   # [SO4] (mmol kg^-1)
-  xso4.m = 14
-  xso4.p = 1/0.5^2
   xso4[1] ~ dnorm(xso4.m, xso4.p)      
-  xso4.pc = 1e6
-  xso4.mc = 0
+  xso4.phi ~ dunif(0,1)
+  xso4.sig[1] = 0 
+  xso4.tau = 1e6
+  xso4.pc = xso4.tau*((1-xso4.phi^2)/(1-xso4.phi^(2*dt)))
   
   # d11B of seawater (per mille SRM-951) 
-  d11Bsw.m = 38.45
-  d11Bsw.p = 1/0.5^2
   d11Bsw[1] ~ dnorm(d11Bsw.m, d11Bsw.p)    
-  d11Bsw.pc = 1/0.005^2
-  d11Bsw.mc = 0 
-  
+  d11Bsw.phi ~ dunif(0,1) 
+  d11Bsw.sig[1] = 0 
+  d11Bsw.tau = 1/0.0005^2
+  d11Bsw.pc = d11Bsw.tau*((1-d11Bsw.phi^2)/(1-d11Bsw.phi^(2*dt)))
+    
   # d18O of seawater (per mille SMOW) 
-  d18Osw.m = -1
-  d18Osw.p = 1/0.5^2
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
-  d18Osw.pc = 1/0.001^2
-  d18Osw.mc = 0
+  d18Osw.phi ~ dunif(0,1) 
+  d18Osw.sig[1] = 0 
+  d18Osw.tau = 1/0.0001^2
+  d18Osw.pc = d18Osw.tau*((1-d18Osw.phi^2)/(1-d18Osw.phi^(2*dt)))
   
   # pH
-  pH.l = 7.5   
-  pH.u = 8.0   
   pH[1] ~ dunif(pH.l, pH.u)   
-  pH.pc = 1e2
-  pH.mc = 0
+  pH.phi ~ dunif(0,1)  
+  pH.sig[1] = 0 
+  pH.tau = 500 
+  pH.pc = pH.tau*((1-pH.phi^2)/(1-pH.phi^(2*dt)))
   
-  # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
-  dic.m = 0.0022
-  dic.p = 1/0.0001^2
+  # DIC (mol kg^-1) 
   dic[1] ~ dnorm(dic.m, dic.p)
-  dic.pc = 1e12
-  dic.mc = 0
+  dic.phi  ~ dunif(0,0.5)
+  dic.sig[1] = 0
+  dic.tau = 1e10
+  dic.pc = dic.tau*((1-dic.phi^2)/(1-dic.phi^(2*dt)))
   
   
-  # Environmental time-dependent priors
+  # Environmental time-dependent variables 
   
   for (i in 2:n.steps){
     
   # Salinity (ppt)  
-  sal.sig[i] ~ dnorm(sal.mc, sal.pc)#I(0.95,1.05)
+  sal.sig[i] ~ dnorm(sal.sig[i-1]*(sal.phi^dt), sal.pc)
   sal[i] = sal[i-1] + sal.sig[i]
   
   # Temp in C
-  tempC.sig[i] ~ dnorm(tempC.mc, tempC.pc)
+  tempC.sig[i] ~ dnorm(tempC.sig[i-1]*(tempC.phi^dt), tempC.pc)
   tempC[i] = tempC[i-1] + tempC.sig[i]
   
   # [Ca] (mmol kg^-1)
-  xca.sig[i] ~ dnorm(xca.mc, xca.pc)
+  xca.sig[i] ~ dnorm(xca.sig[i-1]*(xca.phi^dt), xca.pc)
   xca[i] = xca[i-1] + xca.sig[i]
   
   # [Mg] (mmol kg^-1)
-  xmg.sig[i] ~ dnorm(xmg.mc, xmg.pc)
+  xmg.sig[i] ~ dnorm(xmg.sig[i-1]*(xmg.phi^dt), xmg.pc)
   xmg[i] = xmg[i-1] + xmg.sig[i]
   
   # [SO4] (mmol kg^-1)
-  xso4.sig[i] ~ dnorm(xso4.mc, xso4.pc)
+  xso4.sig[i] ~ dnorm(xso4.sig[i-1]*(xso4.phi^dt), xso4.pc)
   xso4[i] = xso4[i-1] + xso4.sig[i]
   
   # d11B of seawater (per mille SRM-951) 
-  d11Bsw.sig[i] ~ dnorm(d11Bsw.mc, d11Bsw.pc)
+  d11Bsw.sig[i] ~ dnorm(d11Bsw.sig[i-1]*(d11Bsw.phi^dt), d11Bsw.pc)
   d11Bsw[i] = d11Bsw[i-1] + d11Bsw.sig[i]
   
   # d18O of seawater (per mille SMOW) 
-  d18Osw.sig[i] ~ dnorm(d18Osw.mc, d18Osw.pc)
-  d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i] 
+  d18Osw.sig[i] ~ dnorm(d18Osw.sig[i-1]*(d18Osw.phi^dt), d18Osw.pc)
+  d18Osw[i] = d18Osw[i-1] + d18Osw.sig[i]
   
   # pH
-  pH.sig[i] ~ dnorm(pH.mc, pH.pc)
+  pH.sig[i] ~ dnorm(pH.sig[i-1]*(pH.phi^dt), pH.pc)
   pH[i] = pH[i-1] + pH.sig[i]
   
   # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
-  dic.sig[i] ~ dnorm(dic.mc, dic.pc)
-  dic[i] = dic[i-1] + dic.sig[i]
-  #dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 #+ dic.sig[i]
+  temp.dep[i] = (tempC[i]-tempC[i-1])*0.00001*dt
+  dic.sig[i] ~ dnorm((dic.sig[i-1]+temp.dep[i])*(dic.phi^dt), dic.pc) 
+  #dic.sig[i] ~ dnorm(dic.sig[i-1]*(dic.phi^dt), dic.pc)
+  dic[i] = dic[i-1] + temp.dep[i] + dic.sig[i]
   
   }
   
