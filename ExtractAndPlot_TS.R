@@ -78,8 +78,8 @@ fig.font <- "Arial"
 fontsize.axislabels <- 10
 fontsize.scalelabels <- 8
 
-xmax <- 58.6
-xmin <- 57.7
+xmax <- 59
+xmin <- 53
 age.in <- ages.prox/1000
 
 #pco2 in uatm
