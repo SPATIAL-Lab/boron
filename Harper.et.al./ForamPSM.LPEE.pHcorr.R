@@ -1,25 +1,25 @@
+
 model{
 ############################################################################################
 #    LIKELIHOOD FUNCTION: evaluates the data against modeled values
 ############################################################################################    
-  
-  # Gaussian precision for Mg/Ca measurements 
-  mgcaf.p = 1/0.03^2 
-  # Gaussian precision for d18O measurements 
-  d18Of.p = 1/0.1^2
+
+  # Gaussian precision for d18O measurements (1sd = 0.8 per mille based on long-term standard reproducibility)
+  d18Of.p = 1/0.08^2
   
   for (i in 1:length(ai.d11B1)){
   d11Bf.data1[i] ~ dnorm(d11Bf.1[ai.d11B1[i]], d11Bf.p1[i])
-  d11Bf.p1[i] = 1/d11Bfu.data1[i]^2
+  d11Bf.p1[i] = 1/d11Bfu.data1[i]^2 # Gaussian precision for d11Bf (species #1) measurements from se of replicate analyses 
   }
   
   for (i in 1:length(ai.d11B2)){
   d11Bf.data2[i] ~ dnorm(d11Bf.2[ai.d11B2[i]], d11Bf.p2[i])
-  d11Bf.p2[i] = 1/d11Bfu.data2[i]^2
+  d11Bf.p2[i] = 1/d11Bfu.data2[i]^2 # Gaussian precision for d11Bf (species #2) measurements from se of replicate analyses 
   }
   
   for (i in 1:length(ai.mgca)){
-  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p)
+  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p[i])
+  mgcaf.p[i] = 1/(mgcafu.data[i])^2  # Gaussian precision for Mg/Ca measurements (1sd = 1.5%) based on long-term consistency standard reproducibility 
   }
 
   for (i in 1:length(ai.d18O)){
@@ -33,20 +33,31 @@ model{
   
   
   # INPUT VALUES FOR CALCULATIONS 
+  # Includes time invariant prior distributions of parameters and fixed parameters 
   
   # Set modern concentrations for Mg, Ca, and SO4
-  xcam <- 10.2821 # modern [Ca] (mmol kg^-1)
-  xmgm <- 52.8171 # modern [Mg] (mmol kg^-1)
-  xso4m <- 28.24  # modern [SO4] (mmol kg^-1)
+  xcam = 10.2821 # modern [Ca] (mmol kg^-1)
+  xmgm = 52.8171 # modern [Mg] (mmol kg^-1)
+  xso4m = 28.24  # modern [SO4] (mmol kg^-1)
   mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
 
-  
   # Set fractionation factor: Klochko et al. (2006)
   alpha ~ dnorm(alpha.m, alpha.p)     
   alpha.m = 1.0272    #gaussian mean
   alpha.p = 1/0.0003^2   #gaussian precision
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
+  
+  # Index of diagenetic overprint
+  indexop ~ dnorm((seccal/100), (1/(seccal.u/100)^2))
+  
+  # Sensitivity of seawater d18O to salinity 
+  sw.sens ~ dnorm(0.558, 1/0.03^2) # regression slope and uncertainty (i.e., from standard deviation) of GEOSECS obs. reported in Charles and Fairbanks (1990) after Duplessey et al. (1991)
 
+  # Correction for Mg/Ca salinity effect 
+  salcorrco ~ dnorm(0.042, (1/0.004^2))
+  
+  # pH correction on Mg/Ca
+  pHcorrco ~ dnorm(pHpccorr, (1/pHpccorrsd^2))T(0,3.8)
   
   # Define ZT19 table 2 sensitivity parameters (si_j) for changing sw chemistry on carb chem
   s1_ca <- 5/1000
@@ -59,7 +70,6 @@ model{
   sspc_mg <- 518/1000
   sspc_so4 <- 106/1000
  
- 
   # Hollis et al., 2019 input: set H, B and A distributions (i.e., Evans et al., 2012, 2016b)
   # Includes calibration uncertainty in these terms
   Hp ~ dnorm(Hp.m, Hp.p) # nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer)
@@ -68,11 +78,11 @@ model{
   Bmod ~ dnorm(Bmod.m, Bmod.p) # modern pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
   Bmod.m = Bmod.mean  
   Bmod.p = 1/Bmod.sd^2
-  A ~ dnorm(A.m, A.p) # Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
+  A ~ dnorm(A.m, A.p)T(0.067,0.084) # Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
   A.m = A.mean    
   A.p = 1/A.sd^2
   
-  R <- 83.131 # constant (cm^3 bar mol^-1 K^-1)
+  R = 83.131 # constant (cm^3 bar mol^-1 K^-1)
   
     
   for (i in 1:length(ai.prox)){
@@ -134,21 +144,17 @@ model{
     d11Bf.2[i] <- m.2*d11Bb[i]+ (c.final.2[i])     
     
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
-    sw.sens[i] ~ dnorm(0.558, 1/0.03^2) # Uncertainty represents std dev of regression slope in GEOSECS obs. reported in Charles and Fairbanks (1990)
-    d18Osw.sc[i] <- d18Osw[ai.prox[i]] + (sw.sens[i]*(sal[ai.prox[i]]-35))
+    d18Osw.sc[i] <- d18Osw[ai.prox[i]] + (sw.sens*(sal[ai.prox[i]]-35))
     d18Oswpdb[i] <- d18Osw.sc[i] -0.27
     d18Of.pr[i] <- d18Oswpdb[i] + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC[ai.prox[i]])))^0.5))/(2*0.09))
-    indexop[i] ~ dnorm((seccal/100), (1/(seccal.u/100)^2))
-    d18Of[i] <- d18Of.pr[i] + indexop[i]*Dd18Oseccal
+    d18Of[i] <- d18Of.pr[i]*(1-indexop) + indexop*d18Oseccal
 
     # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
     mgcasw[i] <- (xmg[ai.prox[i]]/xca[ai.prox[i]])     
     Bcorr[i] <- ((mgcasw[i]^Hp)/(mgcaswm^Hp)) * Bmod
     mgca_corr[i] <- Bcorr[i]*(exp(A*tempC[ai.prox[i]]))
-    pHcorrco[i] ~ dnorm(pHpccorr, (1/pHpccorrsd^2))
-    mgca_sal[i] <- mgca_corr[i] #/ (1-(8.05-pH[ai.prox[i]])*pHcorrco[i])
-    salcorrco[i] ~ dnorm(0.042, (1/0.004^2))
-    mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco[i])
+    mgca_sal[i] <- mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco)
+    mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco)
     
   }
   
@@ -156,114 +162,113 @@ model{
 #    ENVIRONMENTAL MODEL
 ############################################################################################    
  
-  # Environmental time-dependent prior initial conditions ("-.m" = mean, "-.p" = precision, 
-  # "-.l" = lower, "-.u" = upper) and change terms ("-.mc" = mean change, "-.pc" = change precision)
+  # Environmental time-dependent prior initial conditions 
+        # .phi = temporal autocorrelation of a parameter
+        # .eps =  error term 
+        # .tau = error precision for dt = 1
+        # .pc = error precision of temporal autocorrelation error term (.eps)
 
+  
   # Salinity (ppt)  
-  sal.m = 35  
-  sal.p = 1/0.05^2    
-  sal[1] ~ dnorm(sal.m, sal.p)     
-  sal.pc = 1/0.001^2
-  sal.mc = 1
-
+  sal[1] ~ dnorm(sal.m, sal.p)  
+  sal.phi ~ dbeta(5,2)         
+  sal.eps[1] = 0                 
+  sal.tau ~ dgamma(1e2, 5e-3) 
+  
   # Temp in C
-  tempC.m = 30   
-  tempC.p = 1/5^2 
-  tempC[1] ~ dnorm(tempC.m, tempC.p)     
-  tempC.pc = 1
-  tempC.mc = 0
+  tempC[1] ~ dnorm(tempC.m, tempC.p) 
+  tempC.phi ~ dbeta(5,2) 
+  tempC.eps[1] = 0 
+  tempC.tau ~ dgamma(10, 10)
   
   # [Ca] (mmol kg^-1)
-  xca.m = 21.5842 # calculated using Holland et al., 2020 @ 59 Ma
-  xca.p = 1/0.5^2
-  xca[1] ~ dnorm(xca.m, xca.p)      
-  xca.pc = 1e6
-  xca.mc = 0 - 0.0001938*dt
+  xca[1] ~ dnorm(xca.m, xca.p)
+  xca.phi ~ dbeta(5,2) 
+  xca.eps[1] = 0 
+  xca.tau ~ dgamma(1e3, 1e-3)
   
   # [Mg] (mmol kg^-1)
-  xmg.m = 37 # 63.783 small decrease # 68.090 large decrease
-  xmg.p = 1/0.5^2
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
-  xmg.pc = 1e6
-  xmg.mc = 0 
+  xmg.phi ~ dbeta(5,2)  
+  xmg.eps[1] = 0 
+  xmg.tau ~ dgamma(1e3, 1e-5)
   
   # [SO4] (mmol kg^-1)
-  xso4.m = 14
-  xso4.p = 1/0.5^2
   xso4[1] ~ dnorm(xso4.m, xso4.p)      
-  xso4.pc = 1e6
-  xso4.mc = 0
+  xso4.phi ~ dbeta(5,2) 
+  xso4.eps[1] = 0 
+  xso4.tau ~ dgamma(1e3, 4e-4)
   
   # d11B of seawater (per mille SRM-951) 
-  d11Bsw.m = 38.45
-  d11Bsw.p = 1/0.5^2
   d11Bsw[1] ~ dnorm(d11Bsw.m, d11Bsw.p)    
-  d11Bsw.pc = 1/0.005^2
-  d11Bsw.mc = 0 
+  d11Bsw.phi ~ dbeta(5,2)  
+  d11Bsw.eps[1] = 0 
+  d11Bsw.tau ~ dgamma(4e3, 1e-3)
   
   # d18O of seawater (per mille SMOW) 
-  d18Osw.m = -1
-  d18Osw.p = 1/0.1^2
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
-  d18Osw.pc = 1/0.001^2
-  d18Osw.mc = 1
+  d18Osw.phi ~ dbeta(5,2) 
+  d18Osw.eps[1] = 0 
+  d18Osw.tau ~ dgamma(1e3, 1e-3)
   
-  # pH
-  pH.l = 7.8   
-  pH.u = 8.2 
+  # pH (total scale)
   pH[1] ~ dunif(pH.l, pH.u)   
-  pH.pc = 500
-  pH.mc = 0
+  pH.phi ~ dbeta(5,2)
+  pH.eps[1] = 0 
+  pH.tau ~ dgamma(3000, 1e-1) 
   
-  # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
-  dic.m = 0.002
-  dic.p = 1/0.00005^2
-  dic[1] ~ dnorm(dic.m, dic.p)
-  dic.pc = 1e12
-  dic.mc = 0
+  # DIC (mmol kg^-1) 
+  dic[1] ~ dnorm(dic.sim[1], dic.p)
   
   
-  # Environmental time-dependent priors
+  # Environmental time-dependent variables 
   
   for (i in 2:n.steps){
     
-  # Salinity (ppt)  
-  sal.sig[i] ~ dnorm(sal.mc, sal.pc)I(0.95,1.05)
-  sal[i] = sal[i-1] * sal.sig[i]
-  
-  # Temp in C
-  tempC.sig[i] ~ dnorm(tempC.mc, tempC.pc)
-  tempC[i] = tempC[i-1] + tempC.sig[i]
+    # Salinity (ppt)  
+    sal.pc[i] <- sal.tau*((1-sal.phi^2)/(1-sal.phi^(2*dt[i-1])))   
+    sal.eps[i] ~ dnorm(sal.eps[i-1]*(sal.phi^dt[i-1]), sal.pc[i])T(-0.3, 0.3)
+    sal[i] <- sal[1] * (1 + sal.eps[i])
     
-  # [Ca] (mmol kg^-1)
-  xca.sig[i] ~ dnorm(xca.mc, xca.pc)
-  xca[i] = xca[i-1] + xca.sig[i]
-  
-  # [Mg] (mmol kg^-1)
-  xmg.sig[i] ~ dnorm(xmg.mc, xmg.pc)
-  xmg[i] = xmg[i-1] + xmg.sig[i]
-  
-  # [SO4] (mmol kg^-1)
-  xso4.sig[i] ~ dnorm(xso4.mc, xso4.pc)
-  xso4[i] = xso4[i-1] + xso4.sig[i]
-  
-  # d11B of seawater (per mille SRM-951) 
-  d11Bsw.sig[i] ~ dnorm(d11Bsw.mc, d11Bsw.pc)
-  d11Bsw[i] = d11Bsw[i-1] + d11Bsw.sig[i]
-  
-  # d18O of seawater (per mille SMOW) 
-  d18Osw.sig[i] ~ dnorm(d18Osw.mc, d18Osw.pc)I(0.95,1.05)
-  d18Osw[i] = d18Osw[i-1] * d18Osw.sig[i] 
-  
-  # pH
-  pH.sig[i] ~ dnorm(pH.mc, pH.pc)
-  pH[i] = pH[i-1] + pH.sig[i]
-  
-  # DIC (mol kg^-1) - make change in DIC temp dependent (C cycle model)?
-  dic.sig[i] ~ dnorm(dic.mc, dic.pc)
-  #dic[i] = dic[i-1] + dic.sig[i]
-  dic[i] = dic[i-1] + (tempC[i]-tempC[i-1])*0.00005 + dic.sig[i]
-  
+    # Temp in C
+    tempC.pc[i] <- tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt[i-1]))) 
+    tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-12, 12)
+    tempC[i] <- tempC[1] + tempC.eps[i]
+    
+    # [Ca] (mmol kg^-1); linear decline in Cenozoic follows Holland et al. (2020). 20 mmol/kg decline over last 120 Myr
+    xca.tdep[i] <- -0.00019 * (ages.prox[1]-ages.prox[i])  
+    xca.pc[i] <- xca.tau*((1-xca.phi^2)/(1-xca.phi^(2*dt[i-1])))
+    xca.eps[i] ~ dnorm(xca.eps[i-1]*(xca.phi^dt[i-1]), xca.pc[i])T(-0.3, 0.3)
+    xca[i] <- xca[1] * (1 + xca.eps[i]) + xca.tdep[i]
+    
+    # [Mg] (mmol kg^-1); imposing max realistic decline in Mg/Casw; decrease suggested by paired benthic Mg/Ca+d18O from ODP Site 1209 (data suggest even greater decline than what's imposed here; Mg decrease used here is derived from max observed shifts in Mg/Casw over Cenozoic as in Holland et al. (2020)
+    xmg.tdep[i] <- -0.00274 * (ages.prox[1]-ages.prox[i])    
+    xmg.pc[i] <- xmg.tau*((1-xmg.phi^2)/(1-xmg.phi^(2*dt[i-1])))
+    xmg.eps[i] ~ dnorm(xmg.eps[i-1]*(xmg.phi^dt[i-1]), xmg.pc[i])T(-0.3, 0.3)
+    xmg[i] <- xmg[1] * (1 + xmg.eps[i]) + xmg.tdep[i]
+    
+    # [SO4] (mmol kg^-1)
+    xso4.pc[i] <- xso4.tau*((1-xso4.phi^2)/(1-xso4.phi^(2*dt[i-1])))
+    xso4.eps[i] ~ dnorm(xso4.eps[i-1]*(xso4.phi^dt[i-1]), xso4.pc[i])T(-0.3, 0.3)
+    xso4[i] <- xso4[1] * (1 + xso4.eps[i])
+    
+    # d11B of seawater (per mille SRM-951) 
+    d11Bsw.pc[i] <- d11Bsw.tau*((1-d11Bsw.phi^2)/(1-d11Bsw.phi^(2*dt[i-1])))
+    d11Bsw.eps[i] ~ dnorm(d11Bsw.eps[i-1]*(d11Bsw.phi^dt[i-1]), d11Bsw.pc[i])T(-1, 1)
+    d11Bsw[i] <- d11Bsw[1] + d11Bsw.eps[i]
+    
+    # d18O of seawater (per mille SMOW) 
+    d18Osw.pc[i] <- d18Osw.tau*((1-d18Osw.phi^2)/(1-d18Osw.phi^(2*dt[i-1])))
+    d18Osw.eps[i] ~ dnorm(d18Osw.eps[i-1]*(d18Osw.phi^dt[i-1]), d18Osw.pc[i])T(-2, 2)
+    d18Osw[i] <- d18Osw[1] + d18Osw.eps[i]
+    
+    # pH
+    pH.pc[i] <- pH.tau*((1-pH.phi^2)/(1-pH.phi^(2*dt[i-1])))
+    pH.eps[i] ~ dnorm(pH.eps[i-1]*(pH.phi^dt[i-1]), pH.pc[i])T(-1, 1)
+    pH[i] <- pH[1] + pH.eps[i]
+    
+    # DIC (mol kg^-1) - change in DIC prior based on LOSCAR output
+    dic[i] ~ dnorm(dic.sim[i], dic.p)
   }
   
   # Time independent parameters 
@@ -278,9 +283,5 @@ model{
     
     # Pressure (bar)
     press ~ dnorm(6, press.p)    
-    press.p = 1/1^2 
-    
+    press.p <- 1/1^2 
 }
-
-
-  

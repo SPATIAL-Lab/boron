@@ -79,18 +79,18 @@ fontsize.axislabels <- 10
 fontsize.scalelabels <- 8
 
 xmax <- 59
-xmin <- 53
+xmin <- 53.2
 age.in <- ages.prox/1000
 
 #pco2 in uatm
 pco2min <- 0
-pco2max <- 3200
+pco2max <- 3000
 # pH 
-pHmin <- 7.2
-pHmax <- 8.4
+pHmin <- 7.3
+pHmax <- 8.0
 # temp in C 
-tempCmin <- 25
-tempCmax <- 42
+tempCmin <- 27
+tempCmax <- 36
 
 
 pco2.plot <- ggplot(data = pco2.out) + 
@@ -99,7 +99,7 @@ pco2.plot <- ggplot(data = pco2.out) +
   geom_line(mapping = aes(x=age.in, y=(mean*10^6)), color = "#000000") +
   ylim(pco2min, pco2max) +
   xlim(xmax,xmin) +
-  labs(x = "age (Ma)", y = expression('paleo-CO'[2])) +
+  labs(x = "age (Ma)", y = expression(paste("paleo-CO"[2]," (",mu,"atm)"))) + 
   theme_classic() +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
@@ -164,7 +164,7 @@ pHmin <- 7.2
 pHmax <- 8.1
 # dic in umol/kgsw
 dicmin <- 1500  
-dicmax <- 3200
+dicmax <- 3000
 # temp in C 
 tempCmin <- 25
 tempCmax <- 42

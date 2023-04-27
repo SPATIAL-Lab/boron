@@ -19,7 +19,7 @@ library(tidyverse)
 
 # Input pH correction on Mg/Ca as the percent change per 0.1 pH unit 
 # (e.g., Hollis et al., 2019 recommend 7% per 0.1 pH unit, plus 1sd unc = 0.9%)
-pHpccorr = 7
+pHpccorr = 2
 pHpccorrsd = 0.9
 
 pHpccorr = pHpccorr/10
@@ -27,29 +27,9 @@ pHpccorrsd = pHpccorrsd/10
 
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
-seccal = 73     # Percent recrystallized; DATA FOR JAGS
-seccal.u = 10      # 1sd % recrystallized; DATA FOR JAGS
-Dd18Oseccal = 3.85 # Calculated following Edgar et al. (2015); DATA FOR JAGS
-
-
-#---------------------------------------------------------------------------------------------------------
-# # Pressure prior (ie., depth habitat) in bar for each of the modern species' calibration options 
-# 
-# # G. ruber calibrated species' associated pressures at habitat depth 
-# Grub.press.m =  5        
-# Grub.press.sd = 1     
-# 
-# # T. sacculifer calibrated species' associated pressures at habitat depth 
-# Tsac.press.m = 7        
-# Tsac.press.sd = 1     
-# 
-# # O. universa calibrated species' associated pressures at habitat depth 
-# Ouni.press.m = 10        
-# Ouni.press.sd = 4   
-# 
-# # Borate calibrated species' associated pressures at habitat depth 
-# bor.press.m = 6       
-# bor.press.sd = 2     
+seccal = 60    # Percent recrystallized; DATA FOR JAGS
+seccal.u = 2.5      # 1sd % recrystallized; DATA FOR JAGS
+d18Oseccal = 0.85 # Calculated following Edgar et al. (2015); DATA FOR JAGS
 
 
 #---------------------------------------------------------------------------------------------------------
@@ -63,30 +43,34 @@ Hp.sd = 0.1         # DATA FOR JAGS
 Bmod.mean = 0.38    # DATA FOR JAGS
 Bmod.sd = 0.02      # DATA FOR JAGS
 
-# Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evanset al., 2016)
-A.mean = 0.09       # DATA FOR JAGS
-A.sd = 0.01         # DATA FOR JAGS
+# Exponential constant in Mg/Ca-SST calibration (Evans et al., 2016)
+A.mean = 0.0757       # DATA FOR JAGS
+A.sd = 0.0045         # DATA FOR JAGS
 
 
 #---------------------------------------------------------------------------------------------------------
-# Modern d11Bforam-d11Bborate "vital effect" calibration data 
+# Modern d11Bforam-d11Bborate "vital effect" calibration
 
-# You can adjust the offset for the final value of 'c' here if you wish to see the effect
+# Adjust the offset 'c' for paleo application
 c.correction1 = -3.76   # Correction set to get c = 5.76 for M. vel (i.e., intercept when PETM values are plotted versus borate d11B [calc'd from A. sol as G. ruber])
 c.correction2 = -1.9   # correction set to align PETM d11Borate reconstruction for the two species
+
 # G. ruber 
 # bor.Grub <- c(14.22, 16.66, 19.76)    # Henehan et al. (2013) G. ruber data (borate)
+# bor.Grub.u <- c(0.03, 0.06, 0.045)    # Henehan et al. (2013) G. ruber data (borate 1sd)
 # for.Grub <- c(18.2, 19.63, 21.46)     # Henehan et al. (2013) G. ruber data (calcite)
+# for.Grub.u <- c(0.215, 0.125, 0.13).  # Henehan et al. (2013) G. ruber data (calcite 1sd)
 m.Grub = 0.62   # mean "m" value for G. ruber distribution 
-m.Grubu = 0.0055   # s.d. for "c" value for G. ruber distribution
+m.Grubu = 0.055   # s.d. for "m" value for G. ruber distribution
 c.Grub = 9.52  # mean "c" value for G. ruber distribution 
 c.Grubu = 1.01 # s.d. for "c" value for G. ruber distribution
 
 # T. sacculifer
 # bor.Tsac <- c(19.03, 19.15, 18.8, 19.57, 19.57, 19.57, 18.98, 18.32, 23.86, 14, 18.4)    # T. sacculifer data from Foster (2008), Martinez-Botti et al. core top (2015) [including Sanyal et al (2001) refit data] (borate)
 # for.Tsac <- c(19.95, 19.82, 19.43, 20.28, 20.13, 20.02, 19.60, 19, 23.66, 15.46, 18.49)     # T. sacculifer data from Foster (2008), Martinez-Botti et al. core top (2015) [including Sanyal et al (2001) refit data] (calcite)
+# for.Tsac.u <- c(0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125
 m.Tsac = 0.82   # mean "m" value for T. sacculifer distribution 
-m.Tsacu = 0.011   # s.d. for "c" value for T. sacculifer distribution
+m.Tsacu = 0.11   # s.d. for "m" value for T. sacculifer distribution
 c.Tsac = 3.94  # mean "c" value for T. sacculifer distribution 
 c.Tsacu = 2.01 # s.d. for "c" value for T. sacculifer distribution
 
@@ -109,46 +93,13 @@ c.Tsacu = 2.01 # s.d. for "c" value for T. sacculifer distribution
 
 #---------------------------------------------------------------------------------------------------------
 # These parameters will be recorded in the output
-###GJB - I've added in some of the phi and taus here, these are often informative to look at in the posterior
-parms = c("sal", "tempC", "tempC.phi", "tempC.tau", "press", 
-          "xca", "xmg", "xca.phi", "xca.tau", "xmg.phi", "xmg.tau",
-          "xso4", "d11Bsw", "d18Osw", 
-          "pco2", "dic", "dic.phi", "dic.tau", "pH")
+parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", 
+          "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2", "pH.phi")
 
 
 ############################################################################################
 #    INVERSION DRIVER - 1st data set 
 ############################################################################################
-
-# Input prior mean and precision estimates 
-
-sal.m = 35  
-sal.p = 1/0.5^2    
-
-tempC.m = 30   
-tempC.p = 1/5^2 
-
-xca.m = 21.5842 # 21.5842 @ 59 Ma, 21.0028 @ 56 Ma [Holland et al. (2020); i.e., -0.0001938*dt]
-xca.p = 1/0.5^2
-
-xmg.m = 45.21 # ~37 throughout LPEE, OR 45.21 @59 and 37 @ 56 (i.e., -0.00274*dt); paired benthic Mg/Ca+d18O from Shatsky suggest large decrease in Mg/Casw during LPEE; max Cenozoic change in Mg is 2.74/Myr
-xmg.p = 1/0.5^2
-
-xso4.m = 14
-xso4.p = 1/0.5^2
-
-d11Bsw.m = 38.45
-d11Bsw.p = 1/0.5^2
-
-d18Osw.m = -1
-d18Osw.p = 1/0.1^2
-
-pH.l = 7.8   
-pH.u = 8.2 
-
-dic.m = 0.002020
-dic.p = 1/0.00005^2
-
 # Read in proxy time series data
 input.df = "data/Input_data_TS.xlsx"
 prox.in = read.xlsx(input.df, sheet = "ShatskyLPEE")
@@ -172,6 +123,7 @@ clean.d11B1 <- clean.d11Bs$Grub
 clean.d11B2 <- clean.d11Bs$Tsac
 
 clean.mgca <- prox.in[complete.cases(prox.in$MgCa), ]
+mgcafu <- clean.mgca$MgCa*0.015
 clean.d18O <- prox.in[complete.cases(prox.in$d18O), ]
 
 # Vector of age indexes that contain d11B proxy data (with duplicates)
@@ -199,6 +151,46 @@ ai.mgca = match(ai.mgca, ai.prox)
 ai.d18O = match(ai.d18O, ai.prox)
 
 
+# Input prior mean and precision estimates 
+
+sal.m = 35  
+sal.p = 1/0.5^2    
+
+tempC.m = 30   
+tempC.p = 1/5^2 
+
+xca.m = 21.41 # 21.41 @ 59 Ma, 20.84 @ 56 Ma [Holland et al. (2020); i.e., -0.00019*dt]
+xca.p = 1/0.5^2
+
+xmg.m = 68.51 # ~37 throughout LPEE, OR 68.51 @59 and 37 @ 56 (i.e., -0.00274*dt); paired benthic Mg/Ca+d18O from Shatsky suggest large decrease in Mg/Casw during LPEE; max Cenozoic change in Mg is 2.74/Myr
+xmg.p = 1/0.5^2
+
+xso4.m = 14
+xso4.p = 1/0.5^2
+
+d11Bsw.m = 38.45
+d11Bsw.p = 1/0.5^2
+
+d18Osw.m = -1.2
+d18Osw.p = 1/0.1^2
+
+pH.l = 7.45
+pH.u = 7.75
+
+# DIC priors read in from LOSCAR output 
+dic.p <- 1/0.00015^2
+# Read in DIC time series data
+input.dic = "data/Input_data_dic.xlsx"
+dic.in = read.xlsx(input.dic, sheet = "LPEE")
+dic.in.x <- dic.in[,1]
+dic.in.y <- dic.in[,2]     #mol/kg
+dic.in.df <- data.frame(dic.in.x, dic.in.y)
+# Linearly interpolate DIC for ages associated with each time step using input DIC time series 
+dic.mod <- lm(dic.in.y ~ dic.in.x, data = dic.in.df)
+dic.interp <- approx(dic.in.df$dic.in.x, dic.in.df$dic.in.y, xout=ages.prox, method="linear") 
+dic.sim <- dic.interp[["y"]]
+
+
 # Data to pass to jags
 data = list("d11Bf.data1" = clean.d11B1$d11B, 
             "d11Bfu.data1" = clean.d11B1$d11Bsd, 
@@ -206,8 +198,10 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "d11Bfu.data2" = clean.d11B2$d11Bsd, 
             "d18Of.data" = clean.d18O$d18O, 
             "mgcaf.data" = clean.mgca$MgCa,
+            "mgcafu.data" = mgcafu,
             "n.steps" = n.steps,
             "dt" = dt,
+            "ages.prox" = ages.prox,
             "ai.prox" = ai.prox, 
             "ai.d11B1" = ai.d11B1,
             "ai.d11B2" = ai.d11B2,
@@ -223,7 +217,7 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "c.Tsacu" = c.Tsacu,
             "seccal" = seccal, 
             "seccal.u" = seccal.u, 
-            "Dd18Oseccal" = Dd18Oseccal, 
+            "d18Oseccal" = d18Oseccal, 
             "c.correction1" = c.correction1,
             "c.correction2" = c.correction2,
             "Hp.mean" = Hp.mean, 
@@ -250,13 +244,14 @@ data = list("d11Bf.data1" = clean.d11B1$d11B,
             "d18Osw.p" = d18Osw.p,
             "pH.l" = pH.l,  
             "pH.u" = pH.u, 
-            "dic.m" = dic.m,
+            "dic.sim" = dic.sim,
             "dic.p" = dic.p)
 
 # Run the inversion
 
-jout = jags.parallel(model.file = "boronPSM_TS_pHdicv4_gjb.R", parameters.to.save = parms,
-            data = data, inits = NULL, n.chains = 3, n.iter = 2000,
-            n.burnin = 1000, n.thin = 1)
-
+jout = jags.parallel(model.file = "boronPSM_TS_pHdicv6.R", parameters.to.save = parms,
+            data = data, inits = NULL, n.chains = 9, n.iter = 800000,
+            n.burnin = 500000, n.thin = 400)
+# 500k burn in, 9 chains, 800k iterations takes 10 hours
+write.csv(jout$BUGSoutput$summary, "sum.csv")
 
