@@ -136,8 +136,8 @@ data <- list("d18Of.data" = clean.d18O$d18O,
 ############################################################################################
 # Run the inversion
 jout = jags.parallel(model.file = "1258PETM/MagOxyPSM.R", parameters.to.save = parms,
-                     data = data, inits = NULL, n.chains = 9, n.iter = 100000,
-                     n.burnin = 30000, n.thin = 100)
+                     data = data, inits = NULL, n.chains = 9, n.iter = 10000,
+                     n.burnin = 3000, n.thin = 10)
 ############################################################################################
 
 write.csv(jout$BUGSoutput$summary, "1258PETM/inversion.sum.csv")

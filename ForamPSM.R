@@ -76,7 +76,7 @@ model{
   Bmod ~ dnorm(Bmod.m, Bmod.p) # modern pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
   Bmod.m = Bmod.mean  
   Bmod.p = 1/Bmod.sd^2
-  A ~ dnorm(A.m, A.p)T(0.067,0.084) # Exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans )
+  A ~ dnorm(A.m, A.p)T(0.067,0.084) # Exponential constant in Mg/Ca-SST calibration (Evans et al., 2016)
   A.m = A.mean    
   A.p = 1/A.sd^2
   

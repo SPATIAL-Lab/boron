@@ -1,4 +1,3 @@
-
 model{
 ############################################################################################
 #    LIKELIHOOD FUNCTION: evaluates the data against modeled values
@@ -33,12 +32,11 @@ model{
   
   
   # INPUT VALUES FOR CALCULATIONS 
-  # Includes time invariant prior distributions of parameters and fixed parameters 
   
   # Set modern concentrations for Mg, Ca, and SO4
-  xcam = 10.2821 # modern [Ca] (mmol kg^-1)
-  xmgm = 52.8171 # modern [Mg] (mmol kg^-1)
-  xso4m = 28.24  # modern [SO4] (mmol kg^-1)
+  xcam <- 10.2821 # modern [Ca] (mmol kg^-1)
+  xmgm <- 52.8171 # modern [Mg] (mmol kg^-1)
+  xso4m <- 28.24  # modern [SO4] (mmol kg^-1)
   mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
 
   # Set fractionation factor: Klochko et al. (2006)
@@ -82,41 +80,29 @@ model{
   A.m = A.mean    
   A.p = 1/A.sd^2
   
-  R = 83.131 # constant (cm^3 bar mol^-1 K^-1)
+  R <- 83.131 # constant (cm^3 bar mol^-1 K^-1)
   
-    
+  # Array indexing for pressure (time-invariant)
+  p.index <- round((press-press.lb)/inc)+1    
+  
   for (i in 1:length(ai.prox)){
     # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
     
-    # Calculate equil. constants using salinity and temp:
-    temp[i] <- tempC[ai.prox[i]]+273.15
-    Ks1m_st[i] <-exp(2.83655-2307.1266/temp[i]-1.5529413*(log(temp[i]))-((0.20760841+4.0484/temp[i])*sqrt(sal[ai.prox[i]]))+0.0846834*sal[ai.prox[i]]-0.00654208*(sal[ai.prox[i]]^1.5)+log(1-(0.001005*sal[ai.prox[i]])))
-    Ks2m_st[i] <- exp(-9.226508-3351.6106/temp[i]-0.2005743*(log(temp[i]))-((0.106901773+23.9722/temp[i])*sqrt(sal[ai.prox[i]]))+0.1130822*sal[ai.prox[i]]-0.00846934*(sal[ai.prox[i]]^1.5)+log(1-(0.001005*sal[ai.prox[i]])))
-    logKsspcm_st[i] <- ((-171.9065-0.077993*temp[i]+2839.319/temp[i]+71.595*(log(temp[i])/log(10))+(-0.77712+0.0028426*temp[i]+178.34/temp[i])*(sal[ai.prox[i]]^0.5)-0.07711*sal[ai.prox[i]]+0.0041249*(sal[ai.prox[i]]^1.5)))
-    Ksspcm_st[i] <- 10^(logKsspcm_st[i])
-    lnKsB_st[i] <- ((-8966.9-2890.53*sal[ai.prox[i]]^0.5-77.942*sal[ai.prox[i]]+1.728*sal[ai.prox[i]]^1.5-0.0996*sal[ai.prox[i]]^2)/temp[i])+148.0248+137.1942*sal[ai.prox[i]]^0.5+1.62142*sal[ai.prox[i]]-(24.4344+25.085*sal[ai.prox[i]]^0.5+0.2474*sal[ai.prox[i]])*(log(temp[i]))+(0.053105*sal[ai.prox[i]]^0.5*temp[i])
-    KsB_st[i] <- exp(lnKsB_st[i])
-    Ksw_st[i] <- exp(148.96502-13847.26/temp[i]-23.6521*(log(temp[i]))+(118.67/temp[i]-5.977+1.0495*(log(temp[i])))*(sal[ai.prox[i]]^0.5)-0.01615*sal[ai.prox[i]])
-    K0[i] <- exp(9345.17/temp[i]-60.2409+23.3585*(log(temp[i]/100))+sal[ai.prox[i]]*(0.023517-0.00023656*temp[i]+0.0047036*((temp[i]/100)^2)))
+    # Look up equil. constants using arrays from driver:
+    t.index[i] <- round((tempC[ai.prox[i]]-tempC.lb)/inc)+1
+    s.index[i] <- round((sal[ai.prox[i]]-sal.lb)/inc)+1
     
-    # Adjust equil. constants for the effect of pressure (Millero 1995):
-    delV1[i] <- (-25.50)+0.1271*tempC[ai.prox[i]]
-    delV2[i] <- (-15.82)+(-0.0219*tempC[ai.prox[i]])
-    delVspc[i]<- (-48.76)+(0.5304*tempC[ai.prox[i]])
-    delVB[i] <- (-29.48)+0.1622*tempC[ai.prox[i]]+(2.608/1000)*tempC[ai.prox[i]]^2
-    delVw[i] <- (-25.60)+0.2324*tempC[ai.prox[i]]+(-3.6246/1000)*tempC[ai.prox[i]]^2
+    K0[i] <- K0a[t.index[i], s.index[i]]
     
-    delk1[i] <- (-3.08/1000)+(0.0877/1000)*tempC[ai.prox[i]]
-    delk2[i] <- (1.13/1000)+(-0.1475/1000)*tempC[ai.prox[i]]
-    delkspc[i] <- (-11.76/1000)+(0.3692/1000)*tempC[ai.prox[i]]
-    delkB[i] <- -2.84/1000
-    delkw[i] <- (-5.13/1000)+(0.0794/1000)*tempC[ai.prox[i]]
+    Ks1m[i] <- Ks1a[t.index[i], s.index[i], p.index]
     
-    Ks1m[i] <- (exp(-((delV1[i]/(R*temp[i]))*press)+((0.5*delk1[i])/(R*temp[i]))*press^2))*Ks1m_st[i]
-    Ks2m[i] <- (exp(-((delV2[i]/(R*temp[i]))*press)+((0.5*delk2[i])/(R*temp[i]))*press^2))*Ks2m_st[i]
-    Ksspcm[i] <- (exp(-((delVspc[i]/(R*temp[i]))*press)+((0.5*delkspc[i])/(R*temp[i]))*press^2))*Ksspcm_st[i]
-    KsB[i] <- (exp(-((delVB[i]/(R*temp[i]))*press)+((0.5*delkB[i])/(R*temp[i]))*press^2))*KsB_st[i]
-    Ksw[i] <- (exp(-((delVw[i]/(R*temp[i]))*press)+((0.5*delkw[i])/(R*temp[i]))*press^2))*Ksw_st[i]
+    Ks2m[i] <- Ks2a[t.index[i], s.index[i], p.index]
+    
+    Ksspcm[i] <- Ksspca[t.index[i], s.index[i], p.index]
+    
+    KsB[i] <- KsBa[t.index[i], s.index[i], p.index]
+    
+    Ksw[i] <- Kswa[t.index[i], s.index[i], p.index]
     
     # K*1, K*2, and K*spc are corrected for past seawater [Ca], [Mg], and [SO4] following ZT19
     Ks1[i] <- Ks1m[i]*(1+(s1_ca*(xca[ai.prox[i]]/xcam-1)+s1_mg*(xmg[ai.prox[i]]/xmgm-1)+s1_so4*(xso4[ai.prox[i]]/xso4m-1)))
@@ -153,8 +139,8 @@ model{
     mgcasw[i] <- (xmg[ai.prox[i]]/xca[ai.prox[i]])     
     Bcorr[i] <- ((mgcasw[i]^Hp)/(mgcaswm^Hp)) * Bmod
     mgca_corr[i] <- Bcorr[i]*(exp(A*tempC[ai.prox[i]]))
-    mgca_sal[i] <- mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco)
-    mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco)
+    #mgca_sal[i] <- mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco)
+    mgcaf[i] <- mgca_corr[i] / (1-(sal[ai.prox[i]]-35)*salcorrco)
     
   }
   
@@ -170,13 +156,13 @@ model{
 
   
   # Salinity (ppt)  
-  sal[1] ~ dnorm(sal.m, sal.p)  
+  sal[1] ~ dnorm(sal.m, sal.p)T(25, 45)    
   sal.phi ~ dbeta(5,2)         
   sal.eps[1] = 0                 
   sal.tau ~ dgamma(1e2, 5e-3) 
   
   # Temp in C
-  tempC[1] ~ dnorm(tempC.m, tempC.p) 
+  tempC[1] ~ dnorm(tempC.m, tempC.p)T(15,50)   
   tempC.phi ~ dbeta(5,2) 
   tempC.eps[1] = 0 
   tempC.tau ~ dgamma(10, 10)
@@ -226,49 +212,50 @@ model{
   for (i in 2:n.steps){
     
     # Salinity (ppt)  
-    sal.pc[i] <- sal.tau*((1-sal.phi^2)/(1-sal.phi^(2*dt[i-1])))   
+    sal.pc[i] = sal.tau*((1-sal.phi^2)/(1-sal.phi^(2*dt[i-1])))   
     sal.eps[i] ~ dnorm(sal.eps[i-1]*(sal.phi^dt[i-1]), sal.pc[i])T(-0.3, 0.3)
-    sal[i] <- sal[1] * (1 + sal.eps[i])
+    sal[i] = sal[1] * (1 + sal.eps[i])
     
     # Temp in C
-    tempC.pc[i] <- tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt[i-1]))) 
+    tempC.pc[i] = tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt[i-1]))) 
     tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-12, 12)
-    tempC[i] <- tempC[1] + tempC.eps[i]
+    tempC[i] = tempC[1] + tempC.eps[i]
     
     # [Ca] (mmol kg^-1); linear decline in Cenozoic follows Holland et al. (2020). 20 mmol/kg decline over last 120 Myr
-    xca.tdep[i] <- -0.00019 * (ages.prox[1]-ages.prox[i])  
-    xca.pc[i] <- xca.tau*((1-xca.phi^2)/(1-xca.phi^(2*dt[i-1])))
+    xca.tdep[i] = -0.00019 * (ages.prox[1]-ages.prox[i])  
+    xca.pc[i] = xca.tau*((1-xca.phi^2)/(1-xca.phi^(2*dt[i-1])))
     xca.eps[i] ~ dnorm(xca.eps[i-1]*(xca.phi^dt[i-1]), xca.pc[i])T(-0.3, 0.3)
-    xca[i] <- xca[1] * (1 + xca.eps[i]) + xca.tdep[i]
+    xca[i] = xca[1] * (1 + xca.eps[i]) + xca.tdep[i]
     
     # [Mg] (mmol kg^-1); imposing max realistic decline in Mg/Casw; decrease suggested by paired benthic Mg/Ca+d18O from ODP Site 1209 (data suggest even greater decline than what's imposed here; Mg decrease used here is derived from max observed shifts in Mg/Casw over Cenozoic as in Holland et al. (2020)
-    xmg.tdep[i] <- -0.00274 * (ages.prox[1]-ages.prox[i])    
-    xmg.pc[i] <- xmg.tau*((1-xmg.phi^2)/(1-xmg.phi^(2*dt[i-1])))
+    xmg.tdep[i] = -0.00274 * (ages.prox[1]-ages.prox[i])    
+    xmg.pc[i] = xmg.tau*((1-xmg.phi^2)/(1-xmg.phi^(2*dt[i-1])))
     xmg.eps[i] ~ dnorm(xmg.eps[i-1]*(xmg.phi^dt[i-1]), xmg.pc[i])T(-0.3, 0.3)
-    xmg[i] <- xmg[1] * (1 + xmg.eps[i]) + xmg.tdep[i]
+    xmg[i] = xmg[1] * (1 + xmg.eps[i]) + xmg.tdep[i]
     
     # [SO4] (mmol kg^-1)
-    xso4.pc[i] <- xso4.tau*((1-xso4.phi^2)/(1-xso4.phi^(2*dt[i-1])))
+    xso4.pc[i] = xso4.tau*((1-xso4.phi^2)/(1-xso4.phi^(2*dt[i-1])))
     xso4.eps[i] ~ dnorm(xso4.eps[i-1]*(xso4.phi^dt[i-1]), xso4.pc[i])T(-0.3, 0.3)
-    xso4[i] <- xso4[1] * (1 + xso4.eps[i])
+    xso4[i] = xso4[1] * (1 + xso4.eps[i])
     
     # d11B of seawater (per mille SRM-951) 
-    d11Bsw.pc[i] <- d11Bsw.tau*((1-d11Bsw.phi^2)/(1-d11Bsw.phi^(2*dt[i-1])))
+    d11Bsw.pc[i] = d11Bsw.tau*((1-d11Bsw.phi^2)/(1-d11Bsw.phi^(2*dt[i-1])))
     d11Bsw.eps[i] ~ dnorm(d11Bsw.eps[i-1]*(d11Bsw.phi^dt[i-1]), d11Bsw.pc[i])T(-1, 1)
-    d11Bsw[i] <- d11Bsw[1] + d11Bsw.eps[i]
+    d11Bsw[i] = d11Bsw[1] + d11Bsw.eps[i]
     
     # d18O of seawater (per mille SMOW) 
-    d18Osw.pc[i] <- d18Osw.tau*((1-d18Osw.phi^2)/(1-d18Osw.phi^(2*dt[i-1])))
+    d18Osw.pc[i] = d18Osw.tau*((1-d18Osw.phi^2)/(1-d18Osw.phi^(2*dt[i-1])))
     d18Osw.eps[i] ~ dnorm(d18Osw.eps[i-1]*(d18Osw.phi^dt[i-1]), d18Osw.pc[i])T(-2, 2)
-    d18Osw[i] <- d18Osw[1] + d18Osw.eps[i]
+    d18Osw[i] = d18Osw[1] + d18Osw.eps[i]
     
     # pH
-    pH.pc[i] <- pH.tau*((1-pH.phi^2)/(1-pH.phi^(2*dt[i-1])))
+    pH.pc[i] = pH.tau*((1-pH.phi^2)/(1-pH.phi^(2*dt[i-1])))
     pH.eps[i] ~ dnorm(pH.eps[i-1]*(pH.phi^dt[i-1]), pH.pc[i])T(-1, 1)
-    pH[i] <- pH[1] + pH.eps[i]
+    pH[i] = pH[1] + pH.eps[i]
     
     # DIC (mol kg^-1) - change in DIC prior based on LOSCAR output
     dic[i] ~ dnorm(dic.sim[i], dic.p)
+    
   }
   
   # Time independent parameters 
@@ -282,6 +269,10 @@ model{
     c.2 ~ dnorm(c.Tsac, 1/c.Tsacu^2) 
     
     # Pressure (bar)
-    press ~ dnorm(6, press.p)    
-    press.p <- 1/1^2 
+    press ~ dnorm(6, press.p)T(press.lb, press.ub)    
+    press.p = 1/1^2 
+    
 }
+
+
+  

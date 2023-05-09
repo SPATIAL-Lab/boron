@@ -49,3 +49,23 @@ lines(density(ETM2.CS), col="blue", lwd=1.5)
 abline(v=median(PETM.CS), col="red")
 abline(v=median(ETM2.CS), col="blue")
 abline(v=median(LPEE.CS), col="black")
+
+# Print averages and confidence intervals of interest
+
+print(c(median(PETM.CS), quantile(PETM.CS, 0.025), quantile(PETM.CS, 0.975)))
+print(c(mean(-PETM.DSST), quantile(-PETM.DSST, 0.025), quantile(-PETM.DSST, 0.975)))
+print(c(mean(rowMeans(jout$BUGSoutput$sims.list$pco2[,202:209])), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,202:209]), 0.025), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,202:209]), 0.975)))
+print(c(mean(rowMeans(jout$BUGSoutput$sims.list$pco2[,230:233])), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,230:233]), 0.025), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,230:233]), 0.975)))
+
+print(c(median(ETM2.CS), quantile(ETM2.CS, 0.025), quantile(ETM2.CS, 0.975)))
+print(c(mean(-ETM2.DSST), quantile(-ETM2.DSST, 0.025), quantile(-ETM2.DSST, 0.975)))
+print(c(mean(-ETM2.Dpco2), quantile(-ETM2.Dpco2, 0.025), quantile(-ETM2.Dpco2, 0.975)))
+
+print(c(median(LPEE.CS), quantile(LPEE.CS, 0.025), quantile(LPEE.CS, 0.975)))
+print(c(mean(-LPEE.DSST), quantile(-LPEE.DSST, 0.025), quantile(-LPEE.DSST, 0.975)))
+print(c(mean(-LPEE.Dpco2), quantile(-LPEE.Dpco2, 0.025), quantile(-LPEE.Dpco2, 0.975)))
+print(c(mean(rowMeans(jout$BUGSoutput$sims.list$pco2[,1:19])), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,1:19]), 0.025), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,1:19]), 0.975)))
+print(c(mean(rowMeans(jout$BUGSoutput$sims.list$pco2[,430:433])), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,430:433]), 0.025), quantile(rowMeans(jout$BUGSoutput$sims.list$pco2[,430:433]), 0.975)))
+
+
+
