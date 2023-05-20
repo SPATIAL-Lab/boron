@@ -18,7 +18,7 @@ library(ggpubr)
 ###########################################################################################
 
 step.vector <- seq(1, n.steps, by=1)
-parms.out <- jout$BUGSoutput$summary
+parms.out <- inv.out$BUGSoutput$summary
 parms.out <- data.frame(parms.out)
 
 pco2.v <- paste("pco2[", step.vector, "]", sep="")

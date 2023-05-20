@@ -1,30 +1,35 @@
 
-
 # Driver for time series data inversion using forward foraminifera PSM 
 # Reads in time series proxy data and LOSCAR-simulated DIC data for DIC priors at each time step
 # This version includes generation of look-up tables for carb chem equil constant calcs
 # 
 # Dustin T. Harper
-# 1 May 2023
+# 11 May 2023
 
 
 ############################################################################################
 # Load libraries 
 library(rjags)
-library(R2jags)
 ############################################################################################
 
-############################################################################################
-#    INPUT TO PASS TO JAGS
-############################################################################################    
+############################################################################################  
+# jags specifications
+n.chains = 3
+n.iter = 200
+n.burnin = 50
+n.thin = 1
+
+############################################################################################  
+# pH correction on Mg/Ca 
 
 # Input pH correction on Mg/Ca as the percent change per 0.1 pH unit 
-# (e.g., Hollis et al., 2019 recommend 7% per 0.1 pH unit, plus 1sd unc = 0.9%)
-pHpccorr = 2
+# e.g., Hollis et al., 2019 recommend 7% per 0.1 pH unit, plus 1sd unc = 0.9%; Haynes et al., 2023 suggest minimal to zero effect at low Mg/Casw
+pHpccorr = 2 
 pHpccorrsd = 0.9
 
-pHpccorr = pHpccorr/10
-pHpccorrsd = pHpccorrsd/10
+
+############################################################################################  
+# Diagenesis correction on d18O
 
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
@@ -36,61 +41,60 @@ d18Oseccal = 0.85 # Calculated following Edgar et al. (2015); DATA FOR JAGS
 ############################################################################################  
 # Mg/Ca SST proxy vital effects and calibration parameters 
 
-
 # Nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer) 
-Hp.mean = 0.41      # DATA FOR JAGS
-Hp.sd = 0.1         # DATA FOR JAGS
+Hp.mean = 0.41      
+Hp.sd = 0.1         
 
 # Modern (pre-corrected) pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
-Bmod.mean = 0.38    # DATA FOR JAGS
-Bmod.sd = 0.02      # DATA FOR JAGS
+Bmod.mean = 0.38    
+Bmod.sd = 0.02      
 
 # Exponential constant in Mg/Ca-SST calibration (Evans et al., 2016)
-A.mean = 0.0757       # DATA FOR JAGS
-A.sd = 0.0045         # DATA FOR JAGS
+A.mean = 0.0757      
+A.sd = 0.0045        
 
 
 ############################################################################################  
-# Modern d11Bforam-d11Bborate "vital effect" calibration
+# d11Bforam-d11Bborate "vital effect" calibration
 
-# Adjust the offset 'c' for paleo application
-c.correction1 = -3.76   # Correction set to get c = 5.76 for M. vel (i.e., intercept when PETM values are plotted versus borate d11B [calc'd from A. sol as G. ruber])
-c.correction2 = -1.9   # correction set to align PETM d11Borate reconstruction for the two species
+# G. ruber vitals
+m.Grub = 0.62       # mean "m" value for G. ruber distribution 
+m.Grubu = 0.055     # s.d. for "m" value for G. ruber distribution
+c.Grub = 9.52       # mean "c" value for G. ruber distribution 
+c.Grubu = 1.01      # s.d. for "c" value for G. ruber distribution
+c.Grub.corr = -3.76 # optional "c" correction for paleo applications
 
-# G. ruber 
-# bor.Grub <- c(14.22, 16.66, 19.76)    # Henehan et al. (2013) G. ruber data (borate)
-# bor.Grub.u <- c(0.03, 0.06, 0.045)    # Henehan et al. (2013) G. ruber data (borate 1sd)
-# for.Grub <- c(18.2, 19.63, 21.46)     # Henehan et al. (2013) G. ruber data (calcite)
-# for.Grub.u <- c(0.215, 0.125, 0.13).  # Henehan et al. (2013) G. ruber data (calcite 1sd)
-m.Grub = 0.62   # mean "m" value for G. ruber distribution 
-m.Grubu = 0.055   # s.d. for "m" value for G. ruber distribution
-c.Grub = 9.52  # mean "c" value for G. ruber distribution 
-c.Grubu = 1.01 # s.d. for "c" value for G. ruber distribution
+# T. sacculifer vitals
+m.Tsac = 0.82       # mean "m" value for T. sacculifer distribution 
+m.Tsacu = 0.11      # s.d. for "m" value for T. sacculifer distribution
+c.Tsac = 3.94       # mean "c" value for T. sacculifer distribution 
+c.Tsacu = 2.01      # s.d. for "c" value for T. sacculifer distribution
+c.Tsac.corr = -1.9  # optional "c" correction for paleo applications
 
-# T. sacculifer
-# bor.Tsac <- c(19.03, 19.15, 18.8, 19.57, 19.57, 19.57, 18.98, 18.32, 23.86, 14, 18.4)    # T. sacculifer data from Foster (2008), Martinez-Botti et al. core top (2015) [including Sanyal et al (2001) refit data] (borate)
-# for.Tsac <- c(19.95, 19.82, 19.43, 20.28, 20.13, 20.02, 19.60, 19, 23.66, 15.46, 18.49)     # T. sacculifer data from Foster (2008), Martinez-Botti et al. core top (2015) [including Sanyal et al (2001) refit data] (calcite)
-# for.Tsac.u <- c(0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125
-m.Tsac = 0.82   # mean "m" value for T. sacculifer distribution 
-m.Tsacu = 0.11   # s.d. for "m" value for T. sacculifer distribution
-c.Tsac = 3.94  # mean "c" value for T. sacculifer distribution 
-c.Tsacu = 2.01 # s.d. for "c" value for T. sacculifer distribution
+# # O. universa vitals
+m.Ouni = 0.95       # mean "m" value for O. universa distribution 
+m.Ouniu = 0.085     # s.d. for "c" value for O. universa distribution
+c.Ouni = -0.42      # mean "c" value for O. universa distribution 
+c.Ouniu = 1.43      # s.d. for "c" value for O. universa distribution
+c.Ouni.corr = 0     # optional "c" correction for paleo applications
 
-# # O. universa
-# bor.Ouni <- c(18.14, 18.34, 16.93, 17.51, 16.28, 16.61, 17.74, 16.93, 16.28, 16.93, 18.59, 16.28, 18.21, 19.57, 18.21, 19.82, 19.82, 19.76, 18.78)  # Henehan et al. (2016) O. universa data (borate)
-# for.Ouni <- c(16.17, 16.97, 15.98, 15.99, 15.15, 15.65, 16.29, 15.84, 15.19, 16.08, 17.5, 14.98, 16.62, 18.04, 16.82, 18.57, 18.98, 18.82, 19.47)   # Henehan et al. (2016) O. universa data (calcite)
-# m.Ouni = 0.95   # mean "m" value for O. universa distribution 
-# m.Ouniu = 0.085   # s.d. for "c" value for O. universa distribution
-# c.Ouni = -0.42  # mean "c" value for O. universa distribution 
-# c.Ouniu = 1.43 # s.d. for "c" value for O. universa distribution
-# 
-# # borate
-# bor.borate <- c(0, 1) # 1:1 line (borate) 
-# for.borate <- c(0, 1)  # 1:1 line (calcite)
-# m.borate = 1   # mean "m" value for borate distribution 
-# m.borateu = 0.1   # s.d. for "c" value for borate distribution
-# c.borate = 0  # mean "c" value for borate distribution 
-# c.borateu = 1 # s.d. for "c" value for borate distribution
+# Custom vitals
+m.custom = 0.75     # mean "m" value for custom distribution 
+m.customu = 0.1     # s.d. for "c" value for custom distribution
+c.custom = 2        # mean "c" value for custom distribution 
+c.customu = 1       # s.d. for "c" value for custom distribution
+
+# Borate "vitals" defaults to m=1, c=0 with no uncertainty (i.e., d11Bb = d11Bf exactly)
+m.boru = 1e-3       # presribed uncertainty in "borate vitals" m=1 
+c.boru = 1e-3       # presribed uncertainty in "borate vitals" c=0 
+c.bor.corr = 0      # optional "c" correction for paleo applications (corrects "borate vitals" c=0)
+
+# Vital effect vectors to pass
+m.mean <- c(m.Grub, m.Tsac, m.Ouni, m.custom, 1)
+m.prec <- c(m.Grubu, m.Tsacu, m.Ouniu, m.customu, m.boru)
+
+c.mean <- c(c.Grub+c.Grub.corr, c.Tsac+c.Tsac.corr, c.Ouni+c.Ouni.corr, c.custom, c.bor.corr)
+c.prec <- c(c.Grubu, c.Tsacu, c.Ouniu, c.customu, c.boru)
 
 
 ############################################################################################
@@ -106,13 +110,14 @@ press.lb = 0
 press.ub= 50
 
 # Step increments for sal (ppt) temp (degrees C) and press (bar)
-inc = 1
-rnd.dig <- as.numeric(match(TRUE, round(inc, 1:20) == inc))
+t.inc = 5 #0.25
+s.inc = 5 #0.25
+p.inc = 5 #1
 
 # Ranges of variables over which to evaluate
-tempC.vr = seq(tempC.lb, tempC.ub, by=inc)
-sal.vr = seq(sal.lb, sal.ub, by=inc)
-press.vr = seq(press.lb, press.ub, by=inc)
+tempC.vr = seq(tempC.lb, tempC.ub, by=t.inc)
+sal.vr = seq(sal.lb, sal.ub, by=s.inc)
+press.vr = seq(press.lb, press.ub, by=p.inc)
 
 # Initiate arrays 
 temp.vr = c(1:length(tempC.vr))
@@ -193,10 +198,10 @@ for (i in 1:length(tempC.vr)){
 ############################################################################################
 #    INVERSION DRIVER - Read in and groom data; input environmental model prior distributions 
 ############################################################################################
- 
+
 # These parameters will be recorded in the output
-parms = c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", 
-          "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2")
+parms = c("sal", "tempC", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "d18Osw.local",
+          "pco2", "dic", "pH", "press", "m.vec", "c.vec")#"m.Grub", "m.Tsac", "m.Ouni", "m.custom", "c.Grub", "c.Tsac", "c.Ouni", "c.custom")
 
 # Read in proxy time series data
 prox.in <- read.csv('Harper.et.al./data/ShatskyLPEE.csv')
@@ -215,21 +220,17 @@ prox.in <- transform(prox.in,ai=as.numeric(factor(round(age*-1))))
 
 # parse clean.d11B by clean.d11B$species (clean.d11B1, clean.d11B2)
 clean.d11B <- prox.in[complete.cases(prox.in$d11B), ]
-clean.d11Bs <- split(clean.d11B, clean.d11B$species)
-clean.d11B1 <- clean.d11Bs$Grub
-clean.d11B2 <- clean.d11Bs$Tsac
-clean.d11B3 <- clean.d11Bs$Ouni
-clean.d11B4 <- clean.d11Bs$bor
-
+clean.d11B <- transform(clean.d11B, si=ifelse(clean.d11B$species=="Grub",1,
+                                              ifelse(clean.d11B$species=="Tsac",2,
+                                                     ifelse(clean.d11B$species=="Ouni",3,
+                                                                   ifelse(clean.d11B$species=="custom",4,5)))))
+clean.d11B <- clean.d11B[-6]
 clean.mgca <- prox.in[complete.cases(prox.in$MgCa), ]
 mgcafu <- clean.mgca$MgCa*0.015
 clean.d18O <- prox.in[complete.cases(prox.in$d18O), ]
 
 # Vector of age indexes that contain d11B proxy data (with duplicates)
-ai.d11B1 <- c(clean.d11B1$ai)    
-ai.d11B2 <- c(clean.d11B2$ai)    
-ai.d11B3 <- c(clean.d11B3$ai)
-ai.d11B4 <- c(clean.d11B4$ai)
+ai.d11B <- c(clean.d11B$ai)    
 
 # Vector of age indexes that contain Mg/Ca proxy data
 ai.mgca <- c(clean.mgca$ai)     
@@ -237,7 +238,7 @@ ai.mgca <- c(clean.mgca$ai)
 # Vector of age indexes that contain d18O proxy data
 ai.d18O <- c(clean.d18O$ai)
 
-ai.all <- c(ai.d11B1, ai.d11B2, ai.d11B3, ai.d11B4, ai.mgca, ai.d18O)
+ai.all <- c(ai.d11B, ai.mgca, ai.d18O)
 
 # Index vector which contains each environmental time step that has one or more proxy data
 
@@ -246,10 +247,7 @@ ai.prox <- sort(ai.prox, decreasing = FALSE)
 n.steps = length(ai.prox)
 
 # Prior time bin vectors for which there are proxy data (includes duplicates)
-ai.d11B1 = match(ai.d11B1, ai.prox)
-ai.d11B2 = match(ai.d11B2, ai.prox)
-ai.d11B3 = match(ai.d11B3, ai.prox)
-ai.d11B4 = match(ai.d11B4, ai.prox)
+ai.d11B = match(ai.d11B, ai.prox)
 ai.mgca = match(ai.mgca, ai.prox)
 ai.d18O = match(ai.d18O, ai.prox)
 
@@ -282,27 +280,26 @@ pH.u = 7.75
 
 
 ############################################################################################
-# DIC priors read in from LOSCAR output 
+# DIC prior(s) 
+
+# Specify precision on DIC prior(s)
 dic.p <- 1/0.00015^2
 
-# Read in DIC time series data
-dic.in <- read.csv('Harper.et.al./data/LOSCAR.DIC.csv')
-dic.in.x <- dic.in[,1]
-dic.in.y <- dic.in[,2]     #mol/kg
-dic.in.df <- data.frame(dic.in.x, dic.in.y)
+# Priors at each time step, or prior at time step 1 with autoregressive step function?
 
-# Linearly interpolate DIC for ages associated with each time step using input DIC time series 
-dic.mod <- lm(dic.in.y ~ dic.in.x, data = dic.in.df)
-dic.interp <- approx(dic.in.df$dic.in.x, dic.in.df$dic.in.y, xout=ages.prox, method="linear") 
-dic.sim <- dic.interp[["y"]]
+
+# Read in DIC time series data and linearly interpolate DIC for ages associated with each time step using input DIC time series 
+dic.in <- read.csv('Harper.et.al./data/LOSCAR.DIC.csv')
+dic.mod <- lm(dic.in$dic ~ dic.in$age, data = dic.in)
+dic.interp <- approx(dic.in$age, dic.in$dic, xout=ages.prox, ties = mean, method = "linear")
+dic.sim <- dic.interp$y #mol/kg
 
 
 ############################################################################################
 # Data to pass to jags
-data <- list("d11Bf.data1" = clean.d11B1$d11B, 
-             "d11Bfu.data1" = clean.d11B1$d11Bsd, 
-             "d11Bf.data2" = clean.d11B2$d11B, 
-             "d11Bfu.data2" = clean.d11B2$d11Bsd, 
+data <- list("d11Bf.data" = clean.d11B$d11B,
+             "d11Bfu.data" = clean.d11B$d11Bsd,
+             "si.d11B" = clean.d11B$si,
              "d18Of.data" = clean.d18O$d18O, 
              "mgcaf.data" = clean.mgca$MgCa,
              "mgcafu.data" = mgcafu,
@@ -310,23 +307,16 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
              "dt" = dt,
              "ages.prox" = ages.prox,
              "ai.prox" = ai.prox, 
-             "ai.d11B1" = ai.d11B1,
-             "ai.d11B2" = ai.d11B2,
+             "ai.d11B" = ai.d11B,
              "ai.d18O" = ai.d18O, 
              "ai.mgca" = ai.mgca, 
-             "m.Grub" = m.Grub,
-             "m.Grubu" = m.Grubu,
-             "c.Grub" = c.Grub,
-             "c.Grubu" = c.Grubu,
-             "m.Tsac" = m.Tsac,
-             "m.Tsacu" = m.Tsacu,
-             "c.Tsac" = c.Tsac,
-             "c.Tsacu" = c.Tsacu,
+             "m.mean" = m.mean,
+             "m.prec" = m.prec,
+             "c.mean" = c.mean,
+             "c.prec" = c.prec,
              "seccal" = seccal, 
              "seccal.u" = seccal.u, 
              "d18Oseccal" = d18Oseccal, 
-             "c.correction1" = c.correction1,
-             "c.correction2" = c.correction2,
              "Hp.mean" = Hp.mean, 
              "Hp.sd" = Hp.sd, 
              "Bmod.mean" = Bmod.mean, 
@@ -354,12 +344,12 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
              "dic.sim" = dic.sim,
              "dic.p" = dic.p,
              "tempC.lb" = tempC.lb, 
-             "tempC.ub" = tempC.ub,
              "sal.lb" = sal.lb,
-             "sal.ub" = sal.ub,
              "press.lb" = press.lb,
              "press.ub" = press.ub,
-             "inc" = inc,
+             "t.inc" = t.inc,
+             "s.inc" = s.inc,
+             "p.inc" = p.inc,
              "K0a" = K0a,
              "Ks1a" = Ks1a,
              "Ks2a" = Ks2a,
@@ -371,8 +361,9 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-jout = jags(model.file = "ForamPSM.lutKs.R", parameters.to.save = parms,
-                     data = data, inits = NULL, n.chains = 3, n.iter = 100,
-                     n.burnin = 50, n.thin = 1)
+inv.out = R2jags::jags(model.file = "ForamPSM.lutKs.R", parameters.to.save = parms,
+            data = data, inits = NULL, n.chains = n.chains, n.iter = n.iter,
+            n.burnin = n.burnin, n.thin = n.thin)
 ############################################################################################
+
 

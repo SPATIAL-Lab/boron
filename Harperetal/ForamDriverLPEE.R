@@ -69,7 +69,7 @@ parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw",
            "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2", "pH.phi")
 
 # Read in proxy time series data
-prox.in <- read.csv('Harper.et.al./data/ShatskyLPEE.csv')
+prox.in <- read.csv('Harperetal/data/ShatskyLPEE.csv')
 prox.in <- prox.in[,c(1:6)]
 names(prox.in) <- c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 
@@ -150,7 +150,7 @@ pH.u = 7.75
 dic.p <- 1/0.00015^2
 
 # Read in DIC time series data
-dic.in <- read.csv('Harper.et.al./data/LOSCAR.DIC.csv')
+dic.in <- read.csv('Harperetal/data/LOSCAR_DIC.csv')
 dic.in.x <- dic.in[,1]
 dic.in.y <- dic.in[,2]     #mol/kg
 dic.in.df <- data.frame(dic.in.x, dic.in.y)
@@ -220,12 +220,12 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-jout = jags.parallel(model.file = "Harper.et.al./ForamPSM.LPEE.R", parameters.to.save = parms,
-            data = data, inits = NULL, n.chains = 3, n.iter = 800,
-            n.burnin = 500, n.thin = 1)
+jout = jags.parallel(model.file = "Harperetal/ForamPSMLPEE.R", parameters.to.save = parms,
+            data = data, inits = NULL, n.chains = 9, n.iter = 800000,
+            n.burnin = 500000, n.thin = 100)
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
 ############################################################################################
 
-write.csv(jout$BUGSoutput$summary, "Harper.et.al./inversion.sum.csv")
+write.csv(jout$BUGSoutput$summary, "Harperetal/inversion_sum.csv")
 
 

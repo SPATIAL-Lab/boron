@@ -1,34 +1,27 @@
 model{
-############################################################################################
-#    LIKELIHOOD FUNCTION: evaluates the data against modeled values
-############################################################################################    
-
-  # Gaussian precision for d18O measurements (1sd = 0.8 per mille based on long-term standard reproducibility)
-  d18Of.p = 1/0.08^2
-  
-  for (i in 1:length(ai.d11B1)){
-  d11Bf.data1[i] ~ dnorm(d11Bf.1[ai.d11B1[i]], d11Bf.p1[i])
-  d11Bf.p1[i] = 1/d11Bfu.data1[i]^2 # Gaussian precision for d11Bf (species #1) measurements from se of replicate analyses 
-  }
-  
-  for (i in 1:length(ai.d11B2)){
-  d11Bf.data2[i] ~ dnorm(d11Bf.2[ai.d11B2[i]], d11Bf.p2[i])
-  d11Bf.p2[i] = 1/d11Bfu.data2[i]^2 # Gaussian precision for d11Bf (species #2) measurements from se of replicate analyses 
+  ############################################################################################
+  #    LIKELIHOOD FUNCTION: evaluates the data against modeled values
+  ############################################################################################    
+ 
+  for (i in 1:length(ai.d11B)){
+    d11Bf.data[i] ~ dnorm(d11Bb[i]*m.vec[si.d11B[i]]+c.vec[si.d11B[i]], d11B.p[i])
+    d11B.p[i] = 1/d11Bfu.data[i]^2 # Gaussian precision for d11Bf  measurements from se of replicate analyses 
   }
   
   for (i in 1:length(ai.mgca)){
-  mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p[i])
-  mgcaf.p[i] = 1/(mgcafu.data[i])^2  # Gaussian precision for Mg/Ca measurements (1sd = 1.5%) based on long-term consistency standard reproducibility 
+    mgcaf.data[i] ~ dnorm(mgcaf[ai.mgca[i]], mgcaf.p[i])
+    mgcaf.p[i] = 1/(mgcafu.data[i])^2  # Gaussian precision for Mg/Ca measurements (1sd = 1.5%) based on long-term consistency standard reproducibility 
   }
-
+  
   for (i in 1:length(ai.d18O)){
-  d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
+    d18Of.data[i] ~ dnorm(d18Of[ai.d18O[i]], d18Of.p)
   }
-
-
-############################################################################################
-#    PROXY SYSTEM MODEL
-############################################################################################    
+  # Gaussian precision for d18O measurements (1sd = 0.8 per mille based on long-term standard reproducibility)
+  d18Of.p = 1/0.08^2
+  
+  ############################################################################################
+  #    PROXY SYSTEM MODEL
+  ############################################################################################    
   
   
   # INPUT VALUES FOR CALCULATIONS 
@@ -38,7 +31,7 @@ model{
   xmgm <- 52.8171 # modern [Mg] (mmol kg^-1)
   xso4m <- 28.24  # modern [SO4] (mmol kg^-1)
   mgcaswm <- xmgm/xcam # modern Mg/Ca of seawater
-
+  
   # Set fractionation factor: Klochko et al. (2006)
   alpha ~ dnorm(alpha.m, alpha.p)     
   alpha.m = 1.0272    #gaussian mean
@@ -50,12 +43,12 @@ model{
   
   # Sensitivity of seawater d18O to salinity 
   sw.sens ~ dnorm(0.558, 1/0.03^2) # regression slope and uncertainty (i.e., from standard deviation) of GEOSECS obs. reported in Charles and Fairbanks (1990) after Duplessey et al. (1991)
-
+  
   # Correction for Mg/Ca salinity effect 
   salcorrco ~ dnorm(0.042, (1/0.004^2))
   
   # pH correction on Mg/Ca
-  pHcorrco ~ dnorm(pHpccorr, (1/pHpccorrsd^2))T(0,3.8)
+  pHcorrco ~ dnorm((pHpccorr/10), (1/(pHpccorrsd/10)^2))T(0,(pHpccorr + 2*pHpccorrsd)/10)
   
   # Define ZT19 table 2 sensitivity parameters (si_j) for changing sw chemistry on carb chem
   s1_ca <- 5/1000
@@ -67,7 +60,7 @@ model{
   sspc_ca <- 185/1000
   sspc_mg <- 518/1000
   sspc_so4 <- 106/1000
- 
+  
   # Hollis et al., 2019 input: set H, B and A distributions (i.e., Evans et al., 2012, 2016b)
   # Includes calibration uncertainty in these terms
   Hp ~ dnorm(Hp.m, Hp.p) # nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer)
@@ -83,32 +76,27 @@ model{
   R <- 83.131 # constant (cm^3 bar mol^-1 K^-1)
   
   # Array indexing for pressure (time-invariant)
-  p.index <- round((press-press.lb)/inc)+1    
+  p.index <- round((press-press.lb)/p.inc)+1    
   
   for (i in 1:length(ai.prox)){
-    # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND TYRRELL (2019)
+    # CARB CHEM EQUILIBRIUM CONSTANT CALCULATIONS FOLLOWING ZEEBE AND WOLF-GLADROW (2001) & ZEEBE AND TYRRELL (2019)
     
     # Look up equil. constants using arrays from driver:
-    t.index[i] <- round((tempC[ai.prox[i]]-tempC.lb)/inc)+1
-    s.index[i] <- round((sal[ai.prox[i]]-sal.lb)/inc)+1
+    t.index[i] <- round((tempC[ai.prox[i]]-tempC.lb)/t.inc)+1
+    s.index[i] <- round((sal[ai.prox[i]]-sal.lb)/s.inc)+1
     
     K0[i] <- K0a[t.index[i], s.index[i]]
-    
     Ks1m[i] <- Ks1a[t.index[i], s.index[i], p.index]
-    
     Ks2m[i] <- Ks2a[t.index[i], s.index[i], p.index]
-    
     Ksspcm[i] <- Ksspca[t.index[i], s.index[i], p.index]
-    
     KsB[i] <- KsBa[t.index[i], s.index[i], p.index]
-    
     Ksw[i] <- Kswa[t.index[i], s.index[i], p.index]
     
     # K*1, K*2, and K*spc are corrected for past seawater [Ca], [Mg], and [SO4] following ZT19
     Ks1[i] <- Ks1m[i]*(1+(s1_ca*(xca[ai.prox[i]]/xcam-1)+s1_mg*(xmg[ai.prox[i]]/xmgm-1)+s1_so4*(xso4[ai.prox[i]]/xso4m-1)))
     Ks2[i] <- Ks2m[i]*(1+(s2_ca*(xca[ai.prox[i]]/xcam-1)+s2_mg*(xmg[ai.prox[i]]/xmgm-1)+s2_so4*(xso4[ai.prox[i]]/xso4m-1)))
     Ksspc[i] <- Ksspcm[i]*(1+(sspc_ca*(xca[ai.prox[i]]/xcam-1)+sspc_mg*(xmg[ai.prox[i]]/xmgm-1)+sspc_so4*(xso4[ai.prox[i]]/xso4m-1)))
-  
+    
     
     # DETERMINE FORAMINIFERAL D18O, D11B, AND MG/CA 
     
@@ -118,51 +106,45 @@ model{
     fco2[i] <- co2[i] / K0[i]
     pco2[i] <- fco2[i] / 0.9968
     
-    # Compute d11Bforam from pH and d11Bsw
+    # Compute d11Bborate from pH and d11Bsw
     pKsB[i] <- -(log(KsB[i])/log(10))
     t1[i] <- 10^(pKsB[i]-pH[ai.prox[i]])
     d11Bb[i] <- ((t1[i]*epsilon)-(t1[i]*d11Bsw[ai.prox[i]])-d11Bsw[ai.prox[i]])/(-((t1[i]*alpha)+1))
-    
-    c.final.1[i] <- c.1 + c.correction1 # adjusts final c value if desired - correction specified in driver
-    d11Bf.1[i] <- m.1*d11Bb[i]+ (c.final.1[i])
-    
-    c.final.2[i] <- c.2 + c.correction2 # adjusts final c value if desired - correction specified in driver
-    d11Bf.2[i] <- m.2*d11Bb[i]+ (c.final.2[i])     
-    
+
     # Compute d18Oforam (Bemis et al., 1998; Kim and O'Neil et al., 1997; Hollis et al., 2019)
-    d18Osw.sc[i] <- d18Osw[ai.prox[i]] + (sw.sens*(sal[ai.prox[i]]-35))
-    d18Oswpdb[i] <- d18Osw.sc[i] -0.27
+    d18Osw.local[i] <- d18Osw[ai.prox[i]] + (sw.sens*(sal[ai.prox[i]]-35))
+    d18Oswpdb[i] <- d18Osw.local[i] -0.27
     d18Of.pr[i] <- d18Oswpdb[i] + ((4.64-(((4.64^2)-(4*0.09*(16.1-tempC[ai.prox[i]])))^0.5))/(2*0.09))
     d18Of[i] <- d18Of.pr[i]*(1-indexop) + indexop*d18Oseccal
-
+    
     # Compute Mg/Caforam following Hollis et al. (2019) Mg/Ca carb chem correction approach
     mgcasw[i] <- (xmg[ai.prox[i]]/xca[ai.prox[i]])     
     Bcorr[i] <- ((mgcasw[i]^Hp)/(mgcaswm^Hp)) * Bmod
     mgca_corr[i] <- Bcorr[i]*(exp(A*tempC[ai.prox[i]]))
-    #mgca_sal[i] <- mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco)
-    mgcaf[i] <- mgca_corr[i] / (1-(sal[ai.prox[i]]-35)*salcorrco)
+    mgca_sal[i] <- ifelse(abs(pHcorrco)>0, mgca_corr[i] / (1-(8.05-pH[ai.prox[i]])*pHcorrco), mgca_corr[i])
+    mgcaf[i] <- mgca_sal[i] / (1-(sal[ai.prox[i]]-35)*salcorrco)
     
   }
   
-############################################################################################
-#    ENVIRONMENTAL MODEL
-############################################################################################    
- 
+  ############################################################################################
+  #    ENVIRONMENTAL MODEL
+  ############################################################################################    
+  
   # Environmental time-dependent prior initial conditions 
-        # .phi = temporal autocorrelation of a parameter
-        # .eps =  error term 
-        # .tau = error precision for dt = 1
-        # .pc = error precision of temporal autocorrelation error term (.eps)
-
+  # .phi = temporal autocorrelation of a parameter
+  # .eps =  error term 
+  # .tau = error precision for dt = 1
+  # .pc = error precision of temporal autocorrelation error term (.eps)
+  
   
   # Salinity (ppt)  
-  sal[1] ~ dnorm(sal.m, sal.p)T(25, 45)    
+  sal[1] ~ dnorm(sal.m, sal.p)T(33, 37)    
   sal.phi ~ dbeta(5,2)         
   sal.eps[1] = 0                 
   sal.tau ~ dgamma(1e2, 5e-3) 
   
   # Temp in C
-  tempC[1] ~ dnorm(tempC.m, tempC.p)T(15,50)   
+  tempC[1] ~ dnorm(tempC.m, tempC.p)T(15,40)   
   tempC.phi ~ dbeta(5,2) 
   tempC.eps[1] = 0 
   tempC.tau ~ dgamma(10, 10)
@@ -191,7 +173,7 @@ model{
   d11Bsw.eps[1] = 0 
   d11Bsw.tau ~ dgamma(4e3, 1e-3)
   
-  # d18O of seawater (per mille SMOW) 
+  # d18O of seawater global (per mille SMOW) 
   d18Osw[1] ~ dnorm(d18Osw.m, d18Osw.p)    
   d18Osw.phi ~ dbeta(5,2) 
   d18Osw.eps[1] = 0 
@@ -213,12 +195,12 @@ model{
     
     # Salinity (ppt)  
     sal.pc[i] = sal.tau*((1-sal.phi^2)/(1-sal.phi^(2*dt[i-1])))   
-    sal.eps[i] ~ dnorm(sal.eps[i-1]*(sal.phi^dt[i-1]), sal.pc[i])T(-0.3, 0.3)
+    sal.eps[i] ~ dnorm(sal.eps[i-1]*(sal.phi^dt[i-1]), sal.pc[i])T(-0.1, 0.1)
     sal[i] = sal[1] * (1 + sal.eps[i])
     
     # Temp in C
     tempC.pc[i] = tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt[i-1]))) 
-    tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-12, 12)
+    tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-10, 10)
     tempC[i] = tempC[1] + tempC.eps[i]
     
     # [Ca] (mmol kg^-1); linear decline in Cenozoic follows Holland et al. (2020). 20 mmol/kg decline over last 120 Myr
@@ -260,18 +242,19 @@ model{
   
   # Time independent parameters 
   
-    # 'm' boron vital effect calibration parm 
-    m.1 ~ dnorm(m.Grub, 1/m.Grubu^2)  
-    m.2 ~ dnorm(m.Tsac, 1/m.Tsacu^2)  
-    
-    # 'c' boron vital effect calibration parm
-    c.1 ~ dnorm(c.Grub, 1/c.Grubu^2)     
-    c.2 ~ dnorm(c.Tsac, 1/c.Tsacu^2) 
-    
-    # Pressure (bar)
-    press ~ dnorm(6, press.p)T(press.lb, press.ub)    
-    press.p = 1/1^2 
-    
+  # Vital effects
+  for (i in 1:length(m.mean)){
+    m.vec[i] ~ dnorm(m.mean[i], m.prec[i])
+  }
+  
+  for (i in 1:length(m.mean)){
+    c.vec[i] ~ dnorm(c.mean[i], c.prec[i])
+  }
+  
+  # Pressure (bar)
+  press ~ dnorm(6, press.p)T(press.lb, press.ub)    
+  press.p = 1/1^2 
+  
 }
 
 

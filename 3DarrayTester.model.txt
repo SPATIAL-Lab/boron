@@ -1,0 +1,21 @@
+model {
+
+  for (i in 1:length(ai.mgca)){
+  mgca.data[i] ~ dnorm(mgcaf[ai.mgca[i]], 0.08)
+}
+  
+  for (i in 1:length(ai.mgca)){
+  x.index[i] <- round(tempC[ai.mgca[i]]/tempC[ai.mgca[i]])
+  y.index[i] <- round(tempC[ai.mgca[i]]/tempC[ai.mgca[i]])+1
+  z.index[i] <- round(tempC[ai.mgca[i]]/tempC[ai.mgca[i]])
+  
+  A[i] <- multiarray[x.index[i],  y.index[i], z.index[i]]
+  mgcaf[i] <- 0.41*(exp(A[i]*tempC[ai.mgca[i]]))
+  }
+  
+  tempC[1] ~ dnorm(25,0.25)
+  for (i in 2:length(ai.mgca)){
+    tempC.sig[i] ~ dnorm(0, 1)
+    tempC[i] = tempC[i-1] + tempC.sig[i]
+}
+}
