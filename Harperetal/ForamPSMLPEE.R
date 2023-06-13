@@ -9,12 +9,12 @@ model{
   
   for (i in 1:length(ai.d11B1)){
   d11Bf.data1[i] ~ dnorm(d11Bf.1[ai.d11B1[i]], d11Bf.p1[i])
-  d11Bf.p1[i] = 1/d11Bfu.data1[i]^2 # Gaussian precision for d11Bf (species #1) measurements from se of replicate analyses 
+  d11Bf.p1[i] = 1/d11Bfu.data1[i]^2 # Gaussian precision for d11Bf (species #1) measurements from sd of replicate analyses 
   }
   
   for (i in 1:length(ai.d11B2)){
   d11Bf.data2[i] ~ dnorm(d11Bf.2[ai.d11B2[i]], d11Bf.p2[i])
-  d11Bf.p2[i] = 1/d11Bfu.data2[i]^2 # Gaussian precision for d11Bf (species #2) measurements from se of replicate analyses 
+  d11Bf.p2[i] = 1/d11Bfu.data2[i]^2 # Gaussian precision for d11Bf (species #2) measurements from sd of replicate analyses 
   }
   
   for (i in 1:length(ai.mgca)){
@@ -211,7 +211,7 @@ model{
   pH[1] ~ dunif(pH.l, pH.u)   
   pH.phi ~ dbeta(5,2)
   pH.eps[1] = 0 
-  pH.tau ~ dgamma(3000, 1e-1) 
+  pH.tau ~ dgamma(1000, 1e-1) 
   
   # DIC (mmol kg^-1) 
   dic[1] ~ dnorm(dic.sim[1], dic.p)

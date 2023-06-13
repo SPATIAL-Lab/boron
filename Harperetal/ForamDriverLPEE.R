@@ -222,7 +222,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 
 jout = jags.parallel(model.file = "Harperetal/ForamPSMLPEE.R", parameters.to.save = parms,
             data = data, inits = NULL, n.chains = 9, n.iter = 800000,
-            n.burnin = 500000, n.thin = 100)
+            n.burnin = 300000, n.thin = 100)
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
 ############################################################################################
 
