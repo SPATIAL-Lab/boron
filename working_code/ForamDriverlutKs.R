@@ -204,7 +204,7 @@ parms = c("sal", "tempC", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "d18Osw.loca
           "pco2", "dic", "pH", "press", "m.vec", "c.vec")#"m.Grub", "m.Tsac", "m.Ouni", "m.custom", "c.Grub", "c.Tsac", "c.Ouni", "c.custom")
 
 # Read in proxy time series data
-prox.in <- read.csv('Harper.et.al./data/ShatskyLPEE.csv')
+prox.in <- readRDS('Harperetal/data/ShatskyLPEE_data.rds')
 prox.in <- prox.in[,c(1:6)]
 names(prox.in) <- c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
 

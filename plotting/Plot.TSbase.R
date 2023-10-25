@@ -18,7 +18,7 @@ library(ggpubr)
 ###########################################################################################
 
 step.vector <- seq(1, n.steps, by=1)
-parms.out <- inv.out$BUGSoutput$summary
+parms.out <- jout$BUGSoutput$summary
 parms.out <- data.frame(parms.out)
 
 pco2.v <- paste("pco2[", step.vector, "]", sep="")
@@ -123,7 +123,7 @@ ggplot() +
 ggplot() + 
   geom_errorbar(data = tempC.out, mapping = aes(x=ages.prox, y=mean, ymin=X2.5., ymax=X97.5.), color="gray") +
   geom_point(data = tempC.out, mapping = aes(x=ages.prox, y=mean), color = "black") +
-  ylim(10,40) +
+  ylim(14,44) +
   xlim(xmax,xmin) +
   labs(x= "age (Ma)", y = "temp (C)") +
   theme_bw()
@@ -147,7 +147,7 @@ ggplot() +
 ggplot() + 
   geom_errorbar(data = dic.out, mapping = aes(x=ages.prox, y=mean, ymin=X2.5., ymax=X97.5.), color="gray") +
   geom_point(data = dic.out, mapping = aes(x=ages.prox, y=mean), color = "black") +
-  ylim(0.0015, 0.003) +
+  ylim(0.0015, 0.0035) +
   xlim(xmax,xmin) +
   labs(x= "age (Ma)", y = "DIC (mol/kg)") +
   theme_bw()

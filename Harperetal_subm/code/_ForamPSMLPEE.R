@@ -48,7 +48,7 @@ model{
   epsilon <- (alpha - 1)*1000  # Compute epsilon from alpha
   
   # Index of diagenetic overprint
-  indexop ~ dnorm((seccal/100), (1/(seccal.u/100)^2))
+  indexop ~ dnorm((seccal/100), (1/(seccal.u/100)^2))T(0,1)
   
   # Sensitivity of seawater d18O to salinity 
   sw.sens ~ dnorm(0.558, 1/0.03^2) # regression slope and uncertainty (i.e., from standard deviation) of GEOSECS obs. reported in Charles and Fairbanks (1990) after Duplessey et al. (1991)
@@ -172,16 +172,16 @@ model{
   sal.tau ~ dgamma(1e2, 5e-3) 
   
   # Temp in C
-  tempC[1] ~ dnorm(tempC.m, tempC.p) 
+  tempC[1] ~ dnorm(tempC.m, tempC.p)T(24,36) 
   tempC.phi ~ dbeta(5,2) 
   tempC.eps[1] = 0 
-  tempC.tau ~ dgamma(10, 10)
+  tempC.tau ~ dgamma(100, 10)
   
   # [Ca] (mmol kg^-1)
   xca[1] ~ dnorm(xca.m, xca.p)
   xca.phi ~ dbeta(5,2) 
   xca.eps[1] = 0 
-  xca.tau ~ dgamma(1e3, 1e-3)
+  xca.tau ~ dgamma(1e3, 1e-4) # update this value in SI 
   
   # [Mg] (mmol kg^-1)
   xmg[1] ~ dnorm(xmg.m, xmg.p)      
@@ -211,10 +211,10 @@ model{
   pH[1] ~ dunif(pH.l, pH.u)   
   pH.phi ~ dbeta(5,2)
   pH.eps[1] = 0 
-  pH.tau ~ dgamma(1000, 1e-1) 
+  pH.tau ~ dgamma(3000, 1e-1) 
   
   # DIC (mmol kg^-1) 
-  dic[1] ~ dnorm(dic.sim[1], dic.p)
+  dic[1] ~ dnorm(dic.avg.pri[1], 1/dic.var.pri[1])
   
   
   # Environmental time-dependent variables 
@@ -228,7 +228,7 @@ model{
     
     # Temp in C
     tempC.pc[i] <- tempC.tau*((1-tempC.phi^2)/(1-tempC.phi^(2*dt[i-1]))) 
-    tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-12, 12)
+    tempC.eps[i] ~ dnorm(tempC.eps[i-1]*(tempC.phi^dt[i-1]), tempC.pc[i])T(-6, 6)
     tempC[i] <- tempC[1] + tempC.eps[i]
     
     # [Ca] (mmol kg^-1); linear decline in Cenozoic follows Holland et al. (2020). 20 mmol/kg decline over last 120 Myr
@@ -263,8 +263,8 @@ model{
     pH.eps[i] ~ dnorm(pH.eps[i-1]*(pH.phi^dt[i-1]), pH.pc[i])T(-1, 1)
     pH[i] <- pH[1] + pH.eps[i]
     
-    # DIC (mol kg^-1) - change in DIC prior based on LOSCAR output
-    dic[i] ~ dnorm(dic.sim[i], dic.p)
+    # DIC (mol kg^-1) - change in DIC prior based on LOSCAR output and Haynes and Hoenisch 2020
+    dic[i] ~ dnorm(dic.avg.pri[i], 1/dic.var.pri[i])T(dic.min[i], dic.max[i])
   }
   
   # Time independent parameters 

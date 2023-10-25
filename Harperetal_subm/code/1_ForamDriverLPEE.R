@@ -1,17 +1,17 @@
 #
-# Driver for time series data inversion using forward foraminifera PSM 
-# Reads in time series proxy data and LOSCAR-simulated DIC data for DIC priors at each time step
-# Runs JAGS inversion using 'Foram.PSM.LPEE.pHcorr.R'
-# Designed for late Paleocene early Eocene Shatsky Rise Data Inversion (Harper et al., in prep.)
-# 
-# Dustin T. Harper
-# 27 April 2023
+# Driver file for time series data inversion using forward foraminifera PSM 
+# Reads in time series proxy data from rds objects
+# Reads in Haynes & Hönisch (2020) DIC and LOSCAR-simulated DIC data, determines DIC priors at each time step
+# Runs JAGS inversion using 'ForamPSMLPEE.R' model file
+# Designed for late Paleocene early Eocene Shatsky Rise Data Inversion (Harper et al., submission to PNAS)
+
 
 
 ############################################################################################
 # Load libraries 
 library(rjags)
 library(R2jags)
+library(tidyverse)
 ############################################################################################
 
 ############################################################################################
@@ -19,17 +19,17 @@ library(R2jags)
 ############################################################################################    
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
-seccal = 60         # Percent recrystallized
-seccal.u = 2.5      # 1sd % recrystallized
+seccal = 70         # Percent recrystallized
+seccal.u = 5        # 1sd % recrystallized
 d18Oseccal = 0.85   # Calculated following Edgar et al. (2015)
 
 
 ############################################################################################  
 # Mg/Ca SST proxy vital effects and calibration parameters 
 
-# Nonlinearity of the relationship b/w shell and Mg/Casw (Evans and Muller 2012, T. sacculifer) 
-Hp.mean = 0.41      
-Hp.sd = 0.1         
+# Nonlinearity of the relationship b/w shell and Mg/Casw (Haynes et al. subm., T. sacculifer) 
+Hp.mean = 0.74      
+Hp.sd = 0.05         
 
 # Modern (pre-corrected) pre-exponential constant in Mg/Ca-SST calibration (Anand et al., 2003; Evans et al., 2016) 
 Bmod.mean = 0.38    
@@ -45,19 +45,19 @@ A.sd = 0.0045
 
 # Adjust the offset 'c' for paleo application
 c.correction1 = -3.76   # Correction set to get c = 5.76 for M. vel (i.e., intercept when PETM values are plotted versus borate d11B [calc'd from A. sol as G. ruber])
-c.correction2 = -1.9   # correction set to align PETM d11Borate reconstruction for the two species
+c.correction2 = -2.8    # Correction set to align PETM d11Borate reconstruction for the two species
 
 # G. ruber 
-m.Grub = 0.62   # mean "m" value for G. ruber distribution 
+m.Grub = 0.62     # mean "m" value for G. ruber distribution 
 m.Grubu = 0.055   # s.d. for "m" value for G. ruber distribution
-c.Grub = 9.52  # mean "c" value for G. ruber distribution 
-c.Grubu = 1.01 # s.d. for "c" value for G. ruber distribution
+c.Grub = 9.52     # mean "c" value for G. ruber distribution 
+c.Grubu = 1.01    # s.d. for "c" value for G. ruber distribution
 
 # T. sacculifer
-m.Tsac = 0.82   # mean "m" value for T. sacculifer distribution 
-m.Tsacu = 0.11   # s.d. for "m" value for T. sacculifer distribution
-c.Tsac = 3.94  # mean "c" value for T. sacculifer distribution 
-c.Tsacu = 2.01 # s.d. for "c" value for T. sacculifer distribution
+m.Tsac = 0.73     # mean "m" value for T. sacculifer distribution 
+m.Tsacu = 0.04    # s.d. for "m" value for T. sacculifer distribution
+c.Tsac = 6.42     # mean "c" value for T. sacculifer distribution 
+c.Tsacu = 0.82    # s.d. for "c" value for T. sacculifer distribution
 
 
 ############################################################################################
@@ -66,12 +66,10 @@ c.Tsacu = 2.01 # s.d. for "c" value for T. sacculifer distribution
 
 # These parameters will be recorded in the output
 parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", 
-           "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2", "pH.phi")
+           "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2", "alpha")
 
 # Read in proxy time series data
-prox.in <- read.csv('Harperetal/data/ShatskyLPEE.csv')
-prox.in <- prox.in[,c(1:6)]
-names(prox.in) <- c("age","d11B", "d11Bsd", "d18O", "MgCa", "species")
+prox.in <- readRDS(file = "Harperetal_subm/data/ShatskyLPEE_data.rds")
 
 # Setup age range and bins 
 ages.prox <- unique(round(prox.in$age))
@@ -124,7 +122,7 @@ sal.m = 35
 sal.p = 1/0.5^2    
 
 tempC.m = 30   
-tempC.p = 1/5^2 
+tempC.p = 1/3^2 
 
 xca.m = 21.41 # 21.41 @ 59 Ma, 20.84 @ 56 Ma [Holland et al. (2020); i.e., -0.00019*dt]
 xca.p = 1/0.5^2
@@ -146,27 +144,58 @@ pH.u = 7.75
 
 
 ############################################################################################
-# DIC priors read in from LOSCAR output 
-dic.p <- 1/0.00015^2
+# Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
 
-# Read in DIC time series data
-dic.in <- read.csv('Harperetal/data/LOSCAR_DIC.csv')
-dic.in.x <- dic.in[,1]
-dic.in.y <- dic.in[,2]     #mol/kg
-dic.in.df <- data.frame(dic.in.x, dic.in.y)
-
+dic_LOSCAR <- readRDS(file = "Harperetal_subm/data/dic_LOSCAR.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
-dic.mod <- lm(dic.in.y ~ dic.in.x, data = dic.in.df)
-dic.interp <- approx(dic.in.df$dic.in.x, dic.in.df$dic.in.y, xout=ages.prox, method="linear") 
-dic.sim <- dic.interp[["y"]]
+dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
+dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
+dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
+dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
 
+# Read in DIC time series from Haynes and Hönisch (2020)
+dic_HH <- readRDS("Harperetal_subm/data/dic_HH.rds")
+# Linearly interpolate DIC for ages associated with each time step using input DIC time series 
+dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
+dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
+dic.interp.HH.err <- approx(dic_HH$dic.HH.x, dic.HH.meanerr, xout=ages.prox, method="linear") 
+dic.HH <- dic.interp.HH[["y"]]
+dic.HH.err <- dic.interp.HH.err[["y"]] / 2 
+
+# Compute inverse variance weighted average + variance of DIC from LOSCAR output and HH20 B/Ca-based reconstruction 
+dic.avg.pri <- (dic.LOSCAR*(1/(dic.LOSCAR.err^2))+dic.HH*(1/(dic.HH.err^2))) / (1/dic.LOSCAR.err^2 + 1/dic.HH.err^2)
+dic.var.pri <- 1 / (1/dic.LOSCAR.err^2 + 1/dic.HH.err^2)
+dic.var.pri <- replace(dic.var.pri, dic.var.pri<0.0001^2, 0.0001^2)
+
+# Truncation values for DIC prior normal distribution; min and max of HH20 + LOSCAR sim approaches, plus 
+# added error representative of difference in PETM cGENIE (Gutjahr et al 2017) and LOSCAR (this study) DIC
+minmaxerr <- 0.0003 # i.e., from LOSCAR and cGENIE PETM DIC differences 
+dic.max <- pmax(dic.LOSCAR, dic.HH) + minmaxerr
+dic.min <- pmin(dic.LOSCAR, dic.HH) - minmaxerr
+
+# Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
+dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
+names(dic.pri) <- c("age", "wavg","twosd", "min","max")
+
+ggplot() +
+  geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
+  geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
+  geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
+  geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
+  scale_x_reverse() +
+  labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
+        axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
+        axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
+        axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
 
 ############################################################################################
 # Data to pass to jags
 data <- list("d11Bf.data1" = clean.d11B1$d11B, 
-            "d11Bfu.data1" = clean.d11B1$d11Bsd, 
+            "d11Bfu.data1" = clean.d11B1$d11Bse, 
             "d11Bf.data2" = clean.d11B2$d11B, 
-            "d11Bfu.data2" = clean.d11B2$d11Bsd, 
+            "d11Bfu.data2" = clean.d11B2$d11Bse, 
             "d18Of.data" = clean.d18O$d18O, 
             "mgcaf.data" = clean.mgca$MgCa,
             "mgcafu.data" = mgcafu,
@@ -213,19 +242,27 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
             "d18Osw.p" = d18Osw.p,
             "pH.l" = pH.l,  
             "pH.u" = pH.u, 
-            "dic.sim" = dic.sim,
-            "dic.p" = dic.p)
+            "dic.avg.pri" = dic.avg.pri,
+            "dic.var.pri" = dic.var.pri,
+            "dic.min" = dic.min,
+            "dic.max" = dic.max)
 
 
 ############################################################################################
 # Run the inversion
 
-jout = jags.parallel(model.file = "Harperetal/ForamPSMLPEE.R", parameters.to.save = parms,
+jout = jags.parallel(model.file = "Harperetal_subm/code/_ForamPSMLPEE.R", parameters.to.save = parms,
             data = data, inits = NULL, n.chains = 9, n.iter = 800000,
-            n.burnin = 300000, n.thin = 100)
+            n.burnin = 500000, n.thin = 100)
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
-############################################################################################
 
-write.csv(jout$BUGSoutput$summary, "Harperetal/inversion_sum.csv")
+
+############################################################################################
+# Display summary statistics and save summary as .csv
+
+View(jout$BUGSoutput$summary)
+write.csv(jout$BUGSoutput$summary, "Harperetal_subm/out/inversion_sum.csv")
+
+############################################################################################
 
 

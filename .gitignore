@@ -3,10 +3,10 @@
 .Rapp.history
 
 # Session Data files
-.RData
+Harperetal_subm/out/230916.RData
 
 # User-specific files
-.Ruserdata
+Harperetal_subm/out/inversion_sum.csv
 
 # Example code in package build process
 *-Ex.R
