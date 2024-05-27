@@ -155,11 +155,10 @@ pH.u = 7.75
 ############################################################################################
 # Read in D[CO3=] from file and linearly interpolate for ages associated with each time step 
 
-Dco3_in <- as.data.frame(readRDS(file = "Harperetal_subm/RevisionApril2024/data/Dco3_bw.rds"))
+Dco3_in <- as.data.frame(readRDS(file = "Harperetal_resubm/data/Dco3_LOSCAR.rds"))
 Dco3.interp <- approx(Dco3_in$age, Dco3_in$Dco3, xout=ages.prox, method="linear") 
-Dco3_2s.interp <- approx(Dco3_in$age, Dco3_in$Dco3_2s, xout=ages.prox, method="linear") 
 Dco3.avg.pri <- Dco3.interp[["y"]]
-Dco3.sd.pri <- Dco3_2s.interp[["y"]] / 2
+Dco3.sd.pri <- rep(3, times = length(Dco3.avg.pri))
 DDco3 <- vector("numeric")
 DDco3.sd <- vector("numeric")
 for (i in 1:length(Dco3.avg.pri)){
@@ -175,7 +174,7 @@ for (i in 1:length(Dco3.avg.pri)){
 ############################################################################################
 # Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
 
-dic_LOSCAR <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/dic_LOSCAR.rds")
+dic_LOSCAR <- readRDS(file = "Harperetal_resubm/data/dic_LOSCAR.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
 dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
@@ -183,7 +182,7 @@ dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
 dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
 
 # Read in DIC time series from Haynes and Hönisch (2020)
-dic_HH <- readRDS("Harperetal_subm/RevisionApril2024/data/dic_HH.rds")
+dic_HH <- readRDS("Harperetal_resubm/data/dic_HH.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
 dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
@@ -202,25 +201,25 @@ minmaxerr <- 0.0003 # i.e., from LOSCAR and cGENIE PETM DIC differences
 dic.max <- pmax(dic.LOSCAR, dic.HH) + minmaxerr
 dic.min <- pmin(dic.LOSCAR, dic.HH) - minmaxerr
 
-# Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep.
-dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
-names(dic.pri) <- c("age", "wavg","twosd", "min","max")
-
-fig.font <- "Arial"
-fontsize.axislabels <- 12
-fontsize.scalelabels <- 12
-ggplot() +
-  geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
-  geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
-  geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
-  geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
-  scale_x_reverse() +
-  labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
-  theme_bw() +
-  theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
-        axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
-        axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
-        axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
+## Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
+# dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
+# names(dic.pri) <- c("age", "wavg","twosd", "min","max")
+# 
+# fig.font <- "Arial"
+# fontsize.axislabels <- 12
+# fontsize.scalelabels <- 12
+# ggplot() +
+#   geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
+#   geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
+#   geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
+#   geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
+#   scale_x_reverse() +
+#   labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
+#         axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
+#         axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
+#         axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
 
 ############################################################################################
 # Data to pass to jags
@@ -289,7 +288,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril2024/code/_ForamPSMLPEE.R", 
+system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE.R", 
                      parameters.to.save = parms, data = data, inits = NULL, 
                      n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
@@ -299,11 +298,8 @@ system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril202
 # Display summary statistics and save summary as .csv
 
 #View(jout$BUGSoutput$summary)
-write.csv(jout$BUGSoutput$summary, "Harperetal_subm/RevisionApril2024/out_primary/inversion_sum.csv")
-
-save(ages.prox, file = "Harperetal_subm/RevisionApril2024/out_primary/ages.prox.rda")
-#save(jout, file = "Harperetal_subm/RevisionApril2024/out_primary/LPEE_prim.rda")
+#write.csv(jout$BUGSoutput$summary, "Harperetal_resubm/out_senstest/inversion_sum.csv")
 
 ############################################################################################
-
+save(jout, file = "Harperetal_resubm/out_senstest/LPEE_CO3.rda")
 

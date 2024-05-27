@@ -24,8 +24,8 @@ seccal.u = 5        # 1sd % recrystallized
 d18Oseccal = 0.85   # Calculated following Edgar et al. (2015)
 
 # sea surface pH sensitivity of d18O planktic foram (Dd18O/DpH; Spero et al., 1997 for symbiont-bearing O. universa = -0.89, for pH > 8.0)
-d18O_pHcorr.avg = 0
-d18O_pHcorr.sd = 0
+d18O_pHcorr.avg = -0.89
+d18O_pHcorr.sd = 0.2
 
 
 ############################################################################################  
@@ -78,7 +78,7 @@ parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "p
            "m.1", "m.2", "c.1", "c.2", "alpha", "d11Bf.1", "d11Bf.2", "d18Of", "mgcaf")
 
 # Read in proxy time series data
-prox.in <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/ShatskyLPEE_data.rds")
+prox.in <- readRDS(file = "Harperetal_resubm/data/ShatskyLPEE_data.rds")
 
 # Setup age range and bins 
 ages.prox <- unique(round(prox.in$age))
@@ -155,7 +155,7 @@ pH.u = 7.75
 ############################################################################################
 # Read in D[CO3=] from file and linearly interpolate for ages associated with each time step 
 
-Dco3_in <- as.data.frame(readRDS(file = "Harperetal_subm/RevisionApril2024/data/Dco3_bw.rds"))
+Dco3_in <- as.data.frame(readRDS(file = "Harperetal_resubm/data/Dco3_bw.rds"))
 Dco3.interp <- approx(Dco3_in$age, Dco3_in$Dco3, xout=ages.prox, method="linear") 
 Dco3_2s.interp <- approx(Dco3_in$age, Dco3_in$Dco3_2s, xout=ages.prox, method="linear") 
 Dco3.avg.pri <- Dco3.interp[["y"]]
@@ -175,7 +175,7 @@ for (i in 1:length(Dco3.avg.pri)){
 ############################################################################################
 # Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
 
-dic_LOSCAR <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/dic_LOSCAR.rds")
+dic_LOSCAR <- readRDS(file = "Harperetal_resubm/data/dic_LOSCAR.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
 dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
@@ -183,7 +183,7 @@ dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
 dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
 
 # Read in DIC time series from Haynes and Hönisch (2020)
-dic_HH <- readRDS("Harperetal_subm/RevisionApril2024/data/dic_HH.rds")
+dic_HH <- readRDS("Harperetal_resubm/data/dic_HH.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
 dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
@@ -202,25 +202,25 @@ minmaxerr <- 0.0003 # i.e., from LOSCAR and cGENIE PETM DIC differences
 dic.max <- pmax(dic.LOSCAR, dic.HH) + minmaxerr
 dic.min <- pmin(dic.LOSCAR, dic.HH) - minmaxerr
 
-## Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
-# dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
-# names(dic.pri) <- c("age", "wavg","twosd", "min","max")
-# 
-# fig.font <- "Arial"
-# fontsize.axislabels <- 12
-# fontsize.scalelabels <- 12
-# ggplot() +
-#   geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
-#   geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
-#   geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
-#   geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
-#   scale_x_reverse() +
-#   labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
-#   theme_bw() +
-#   theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
-#         axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
-#         axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
-#         axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
+# Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep.
+dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
+names(dic.pri) <- c("age", "wavg","twosd", "min","max")
+
+fig.font <- "Arial"
+fontsize.axislabels <- 12
+fontsize.scalelabels <- 12
+ggplot() +
+  geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
+  geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
+  geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
+  geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
+  scale_x_reverse() +
+  labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
+        axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
+        axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
+        axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
 
 ############################################################################################
 # Data to pass to jags
@@ -289,7 +289,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril2024/code/_ForamPSMLPEE.R", 
+system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE.R", 
                      parameters.to.save = parms, data = data, inits = NULL, 
                      n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
@@ -299,8 +299,11 @@ system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril202
 # Display summary statistics and save summary as .csv
 
 #View(jout$BUGSoutput$summary)
-#write.csv(jout$BUGSoutput$summary, "Harperetal_subm/RevisionApril2024/out/inversion_sum.csv")
+write.csv(jout$BUGSoutput$summary, "Harperetal_resubm/out_primary/inversion_sum.csv")
+
+save(ages.prox, file = "Harperetal_resubm/out_primary/ages.prox.rda")
+#save(jout, file = "Harperetal_resubm/out_primary/LPEE_prim.rda")
 
 ############################################################################################
-save(jout, file = "Harperetal_subm/RevisionApril2024/out/LPEE_nopHd18O.rda")
+
 

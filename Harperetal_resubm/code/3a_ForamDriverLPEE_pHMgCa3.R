@@ -78,7 +78,7 @@ parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "p
            "m.1", "m.2", "c.1", "c.2", "alpha", "d11Bf.1", "d11Bf.2", "d18Of", "mgcaf")
 
 # Read in proxy time series data
-prox.in <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/ShatskyLPEE_data.rds")
+prox.in <- readRDS(file = "Harperetal_resubm/data/ShatskyLPEE_data.rds")
 
 # Setup age range and bins 
 ages.prox <- unique(round(prox.in$age))
@@ -155,7 +155,7 @@ pH.u = 7.75
 ############################################################################################
 # Read in D[CO3=] from file and linearly interpolate for ages associated with each time step 
 
-Dco3_in <- as.data.frame(readRDS(file = "Harperetal_subm/RevisionApril2024/data/Dco3_bw.rds"))
+Dco3_in <- as.data.frame(readRDS(file = "Harperetal_resubm/data/Dco3_bw.rds"))
 Dco3.interp <- approx(Dco3_in$age, Dco3_in$Dco3, xout=ages.prox, method="linear") 
 Dco3_2s.interp <- approx(Dco3_in$age, Dco3_in$Dco3_2s, xout=ages.prox, method="linear") 
 Dco3.avg.pri <- Dco3.interp[["y"]]
@@ -175,7 +175,7 @@ for (i in 1:length(Dco3.avg.pri)){
 ############################################################################################
 # Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
 
-dic_LOSCAR <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/dic_LOSCAR.rds")
+dic_LOSCAR <- readRDS(file = "Harperetal_resubm/data/dic_LOSCAR.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
 dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
@@ -183,7 +183,7 @@ dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
 dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
 
 # Read in DIC time series from Haynes and Hönisch (2020)
-dic_HH <- readRDS("Harperetal_subm/RevisionApril2024/data/dic_HH.rds")
+dic_HH <- readRDS("Harperetal_resubm/data/dic_HH.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
 dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
@@ -289,7 +289,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril2024/code/_ForamPSMLPEE.R", 
+system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE.R", 
                      parameters.to.save = parms, data = data, inits = NULL, 
                      n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
@@ -299,8 +299,8 @@ system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril202
 # Display summary statistics and save summary as .csv
 
 #View(jout$BUGSoutput$summary)
-#write.csv(jout$BUGSoutput$summary, "Harperetal_subm/RevisionApril2024/out/inversion_sum.csv")
+#write.csv(jout$BUGSoutput$summary, "Harperetal_resubm/out_senstest/inversion_sum.csv")
 
 ############################################################################################
-save(jout, file = "Harperetal_subm/RevisionApril2024/out/LPEE_pHMgCa3.rda")
+save(jout, file = "Harperetal_resubm/out_senstest/LPEE_pHMgCa3.rda")
 

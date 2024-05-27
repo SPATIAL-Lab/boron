@@ -11,7 +11,7 @@
 # Load libraries 
 #library(rjags)
 library(R2jags)
-#library(tidyverse)
+
 ############################################################################################
 
 ############################################################################################
@@ -74,11 +74,11 @@ c.Tsacu = 0.82    # s.d. for "c" value for T. sacculifer distribution
 ############################################################################################
 
 # These parameters will be recorded in the output
-parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "pco2", "dic", "pH", 
+parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "pco2", "alk", "pH", 
            "m.1", "m.2", "c.1", "c.2", "alpha", "d11Bf.1", "d11Bf.2", "d18Of", "mgcaf")
 
 # Read in proxy time series data
-prox.in <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/ShatskyLPEE_data.rds")
+prox.in <- readRDS(file = "Harperetal_resubm/data/ShatskyLPEE_data.rds")
 
 # Setup age range and bins 
 ages.prox <- unique(round(prox.in$age))
@@ -155,10 +155,11 @@ pH.u = 7.75
 ############################################################################################
 # Read in D[CO3=] from file and linearly interpolate for ages associated with each time step 
 
-Dco3_in <- as.data.frame(readRDS(file = "Harperetal_subm/RevisionApril2024/data/Dco3_LOSCAR.rds"))
+Dco3_in <- as.data.frame(readRDS(file = "Harperetal_resubm/data/Dco3_bw.rds"))
 Dco3.interp <- approx(Dco3_in$age, Dco3_in$Dco3, xout=ages.prox, method="linear") 
+Dco3_2s.interp <- approx(Dco3_in$age, Dco3_in$Dco3_2s, xout=ages.prox, method="linear") 
 Dco3.avg.pri <- Dco3.interp[["y"]]
-Dco3.sd.pri <- rep(3, times = length(Dco3.avg.pri))
+Dco3.sd.pri <- Dco3_2s.interp[["y"]] / 2
 DDco3 <- vector("numeric")
 DDco3.sd <- vector("numeric")
 for (i in 1:length(Dco3.avg.pri)){
@@ -172,54 +173,35 @@ for (i in 1:length(Dco3.avg.pri)){
 }
 
 ############################################################################################
-# Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
-
-dic_LOSCAR <- readRDS(file = "Harperetal_subm/RevisionApril2024/data/dic_LOSCAR.rds")
-# Linearly interpolate DIC for ages associated with each time step using input DIC time series 
-dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
-dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
-dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
-dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
-
-# Read in DIC time series from Haynes and Hönisch (2020)
-dic_HH <- readRDS("Harperetal_subm/RevisionApril2024/data/dic_HH.rds")
-# Linearly interpolate DIC for ages associated with each time step using input DIC time series 
-dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
-dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
-dic.interp.HH.err <- approx(dic_HH$dic.HH.x, dic.HH.meanerr, xout=ages.prox, method="linear") 
-dic.HH <- dic.interp.HH[["y"]]
-dic.HH.err <- dic.interp.HH.err[["y"]] / 2 
-
-# Compute inverse variance weighted average + variance of DIC from LOSCAR output and HH20 B/Ca-based reconstruction 
-dic.avg.pri <- (dic.LOSCAR*(1/(dic.LOSCAR.err^2))+dic.HH*(1/(dic.HH.err^2))) / (1/dic.LOSCAR.err^2 + 1/dic.HH.err^2)
-dic.var.pri <- 1 / (1/dic.LOSCAR.err^2 + 1/dic.HH.err^2)
-dic.var.pri <- replace(dic.var.pri, dic.var.pri<0.0001^2, 0.0001^2)
-
-# Truncation values for DIC prior normal distribution; min and max of HH20 + LOSCAR sim approaches, plus 
-# added error representative of difference in PETM cGENIE (Gutjahr et al 2017) and LOSCAR (this study) DIC
-minmaxerr <- 0.0003 # i.e., from LOSCAR and cGENIE PETM DIC differences 
-dic.max <- pmax(dic.LOSCAR, dic.HH) + minmaxerr
-dic.min <- pmin(dic.LOSCAR, dic.HH) - minmaxerr
-
-## Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
-# dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
-# names(dic.pri) <- c("age", "wavg","twosd", "min","max")
+# # Read in alk from LOSCAR simulation output: 5800 PETM and 3800 ETM-2 with 2.2 mmol/kg LPEE background
+# library(readxl)
+# alk_PETM_hi <- read_xlsx("Harperetal_subm/RevisionApril2024/data/alk_LOSCAR.xlsx", sheet = "alk_PETM_hi")
+# alk_PETM_low <-read_xlsx("Harperetal_subm/RevisionApril2024/data/alk_LOSCAR.xlsx", sheet = "alk_PETM_low")
+# alk_ETM2_hi <- read_xlsx("Harperetal_subm/RevisionApril2024/data/alk_LOSCAR.xlsx", sheet = "alk_ETM2_hi")
+# alk_ETM2_low <- read_xlsx("Harperetal_subm/RevisionApril2024/data/alk_LOSCAR.xlsx", sheet = "alk_ETM2_low")
 # 
-# fig.font <- "Arial"
-# fontsize.axislabels <- 12
-# fontsize.scalelabels <- 12
-# ggplot() +
-#   geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
-#   geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
-#   geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
-#   geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
-#   scale_x_reverse() +
-#   labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
-#   theme_bw() +
-#   theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
-#         axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
-#         axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
-#         axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
+# alk_PETM_hi_interp <- approx(alk_PETM_hi$age, alk_PETM_hi$alk, xout=alk_PETM_low$age, method="linear") 
+# alk_PETM <- cbind(alk_PETM_low$age, (alk_PETM_hi_interp$y + alk_PETM_low$alk)/2)
+# colnames(alk_PETM) <- c("age", "alk")
+# 
+# alk_ETM2_hi_interp <- approx(alk_ETM2_hi$age, alk_ETM2_hi$alk, xout=alk_ETM2_low$age, method="linear") 
+# alk_ETM2 <- cbind(alk_ETM2_low$age, (alk_ETM2_hi_interp$y + alk_ETM2_low$alk)/2)
+# colnames(alk_ETM2) <- c("age", "alk")
+# 
+# alk_LOSCAR <- data.frame(rbind(alk_PETM, alk_ETM2))
+# alk.interp.LOSCAR <- approx(alk_LOSCAR$age, alk_LOSCAR$alk, xout=ages.prox, method="linear")
+# save(alk.interp.LOSCAR, file = "Harperetal_subm/RevisionApril2024/data/alk.interp.LOSCAR.rda")
+load(file= "Harperetal_resubm/data/alk.interp.LOSCAR.rda")
+
+alk.avg.pri <- (alk.interp.LOSCAR[["y"]]) / 1e3
+alk.sd.pri <- rep(0.0001, times= length(alk.avg.pri))
+
+alk.min <- alk.avg.pri - 0.0003
+alk.max <- alk.avg.pri + 0.0003
+
+# Plot the sea surface alkalinity prior mean 
+plot(x = ages.prox, y = alk.avg.pri)
+
 
 ############################################################################################
 # Data to pass to jags
@@ -273,10 +255,10 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
             "d18Osw.p" = d18Osw.p,
             "pH.l" = pH.l,  
             "pH.u" = pH.u, 
-            "dic.avg.pri" = dic.avg.pri,
-            "dic.var.pri" = dic.var.pri,
-            "dic.min" = dic.min,
-            "dic.max" = dic.max,
+            "alk.avg.pri" = alk.avg.pri,
+            "alk.sd.pri" = alk.sd.pri,
+            "alk.min" = alk.min,
+            "alk.max" = alk.max,
             "DDco3" = DDco3,
             "DDco3.sd" = DDco3.sd,
             "mgca_pHcorr.avg" = mgca_pHcorr.avg,
@@ -288,7 +270,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 ############################################################################################
 # Run the inversion
 
-system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril2024/code/_ForamPSMLPEE.R", 
+system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE_CCvar.R", 
                      parameters.to.save = parms, data = data, inits = NULL, 
                      n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
@@ -298,8 +280,7 @@ system.time({jout = jags.parallel(model.file = "Harperetal_subm/RevisionApril202
 # Display summary statistics and save summary as .csv
 
 #View(jout$BUGSoutput$summary)
-#write.csv(jout$BUGSoutput$summary, "Harperetal_subm/RevisionApril2024/out/inversion_sum.csv")
+#write.csv(jout$BUGSoutput$summary, "Harperetal_resubm/out_senstest/inversion_sum.csv")
 
 ############################################################################################
-save(jout, file = "Harperetal_subm/RevisionApril2024/out/LPEE_CO3.rda")
-
+save(jout, file = "Harperetal_resubm/out_senstest/LPEE_CCvar.rda")

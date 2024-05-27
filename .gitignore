@@ -3,14 +3,13 @@
 .Rapp.history
 
 # Session Data files
-Harperetal_subm/out
+
 
 # User-specific files
-Harperetal_subm/out/inversion_sum.csv
-Harperetal_subm/RevisionApril2024/out_senstest
-Harperetal_subm/RevisionApril2024/out_primary/LPEE_prim.rda
-Harperetal_subm/RevisionApril2024/.DS_Store
-Harperetal_subm/RevisionApril2024/data/.DS_Store
+Harperetal_resubm/out_senstest
+Harperetal_resubm/out_primary/LPEE_prim.rda
+Harperetal_resubm/R.DS_Store
+Harperetal_resubm/data/.DS_Store
 
 # Example code in package build process
 *-Ex.R

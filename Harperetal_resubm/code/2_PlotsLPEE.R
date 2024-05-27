@@ -1,8 +1,10 @@
 #
 # This contains the R code to plot Figures 2, 3, and S5 in Harper et al., submission to PNAS 
-# 
+# Note that full inversion output files used here ('jout') are too big to include in the repository. 
+# Thus inversions would need to be re-run using "...Driver..." .R files. 
 
 jout <- jout_prim
+load(file = "Harperetal_resubm/out_primary/ages.prox.rda")
 
 ###########################################################################################
 # Temp, pCO2, and pH time series draw plots
@@ -117,7 +119,7 @@ print(c(mean(-LP.Dpco2), quantile(-LP.Dpco2, 0.025), quantile(-LP.Dpco2, 0.975))
 ###########################################################################################
 # LOSCAR Supplemental Figure - 5800 Gt release of -35 per mille C
 ###########################################################################################
-LOSCAR <- readRDS("Harperetal_subm/RevisionApril2024/data/LOSCAR_PETM5800.rds")
+LOSCAR <- readRDS("Harperetal_resubm/data/LOSCAR_PETM5800.rds")
 
 # read in and format PSM output 
 jout_summ <- jout$BUGSoutput$summary

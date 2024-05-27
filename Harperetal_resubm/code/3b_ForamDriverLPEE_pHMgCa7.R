@@ -9,9 +9,9 @@
 
 ############################################################################################
 # Load libraries 
-library(rjags)
+#library(rjags)
 library(R2jags)
-library(tidyverse)
+#library(tidyverse)
 ############################################################################################
 
 ############################################################################################
@@ -19,15 +19,19 @@ library(tidyverse)
 ############################################################################################    
 # Input approximate % of calcite non-primary (recrystallized), with 1sd uncertainty,
 # and estimated Dd18O of primary-inorganic (secondary) calcite
-seccal = 70         # Percent recrystallized
+seccal = 60         # Percent recrystallized
 seccal.u = 5        # 1sd % recrystallized
 d18Oseccal = 0.85   # Calculated following Edgar et al. (2015)
+
+# sea surface pH sensitivity of d18O planktic foram (Dd18O/DpH; Spero et al., 1997 for symbiont-bearing O. universa = -0.89, for pH > 8.0)
+d18O_pHcorr.avg = -0.89
+d18O_pHcorr.sd = 0.2
 
 
 ############################################################################################  
 # Mg/Ca SST proxy vital effects and calibration parameters 
 
-# Nonlinearity of the relationship b/w shell and Mg/Casw (Haynes et al. subm., T. sacculifer) 
+# Nonlinearity of the relationship b/w shell and Mg/Casw (Haynes et al. 2023, T. sacculifer) 
 Hp.mean = 0.74      
 Hp.sd = 0.05         
 
@@ -35,9 +39,14 @@ Hp.sd = 0.05
 Bmod.mean = 0.38    
 Bmod.sd = 0.02      
 
-# Exponential constant in Mg/Ca-SST calibration (Evans et al., 2016) for low (P-E) Mg/Casw
-A.mean = 0.0757       
-A.sd = 0.0045         
+# Exponential constant in Mg/Ca-SST calibration (all species regression of Gray and Evans 2019), with 
+# expanded uncertainty (10 times the sd of their regression) for low (P-E) Mg/Casw
+A.mean = 0.061  
+A.sd = 0.005     
+
+# sea surface pH sensitivty of Mg/Ca planktic foram (as a percent change per 0.1 pH unit)
+mgca_pHcorr.avg = 7
+mgca_pHcorr.sd = 0
 
 
 ############################################################################################  
@@ -65,11 +74,11 @@ c.Tsacu = 0.82    # s.d. for "c" value for T. sacculifer distribution
 ############################################################################################
 
 # These parameters will be recorded in the output
-parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", 
-           "pco2", "dic", "pH", "m.1", "m.2", "c.1", "c.2", "alpha")
+parms <- c("sal", "tempC", "press", "xca", "xmg", "xso4", "d11Bsw", "d18Osw", "pco2", "dic", "pH", 
+           "m.1", "m.2", "c.1", "c.2", "alpha", "d11Bf.1", "d11Bf.2", "d18Of", "mgcaf")
 
 # Read in proxy time series data
-prox.in <- readRDS(file = "Harperetal_subm/data/ShatskyLPEE_data.rds")
+prox.in <- readRDS(file = "Harperetal_resubm/data/ShatskyLPEE_data.rds")
 
 # Setup age range and bins 
 ages.prox <- unique(round(prox.in$age))
@@ -136,7 +145,7 @@ xso4.p = 1/0.5^2
 d11Bsw.m = 38.45
 d11Bsw.p = 1/0.5^2
 
-d18Osw.m = -1.2
+d18Osw.m = -0.7
 d18Osw.p = 1/0.1^2
 
 pH.l = 7.45
@@ -144,9 +153,29 @@ pH.u = 7.75
 
 
 ############################################################################################
+# Read in D[CO3=] from file and linearly interpolate for ages associated with each time step 
+
+Dco3_in <- as.data.frame(readRDS(file = "Harperetal_resubm/data/Dco3_bw.rds"))
+Dco3.interp <- approx(Dco3_in$age, Dco3_in$Dco3, xout=ages.prox, method="linear") 
+Dco3_2s.interp <- approx(Dco3_in$age, Dco3_in$Dco3_2s, xout=ages.prox, method="linear") 
+Dco3.avg.pri <- Dco3.interp[["y"]]
+Dco3.sd.pri <- Dco3_2s.interp[["y"]] / 2
+DDco3 <- vector("numeric")
+DDco3.sd <- vector("numeric")
+for (i in 1:length(Dco3.avg.pri)){
+  if (Dco3.avg.pri[i] < 21.3){
+    DDco3[i] <- Dco3.avg.pri[i]-21.3
+    DDco3.sd[i] <- Dco3.sd.pri[i]
+  } else {
+    DDco3[i] <- 0
+    DDco3.sd[i] <- 1e-20
+    }
+}
+
+############################################################################################
 # Read in DIC from LOSCAR simulation output: mean of 2 sims for PETM and 2 sims for ETM-2 with ZT19 long-term carb chem
 
-dic_LOSCAR <- readRDS(file = "Harperetal_subm/data/dic_LOSCAR.rds")
+dic_LOSCAR <- readRDS(file = "Harperetal_resubm/data/dic_LOSCAR.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.LOSCAR <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.y, xout=ages.prox, method="linear") 
 dic.interp.LOSCAR.err <- approx(dic_LOSCAR$dic.LOSCAR.x, dic_LOSCAR$dic.LOSCAR.2s, xout=ages.prox, method="linear") 
@@ -154,7 +183,7 @@ dic.LOSCAR <- dic.interp.LOSCAR[["y"]]
 dic.LOSCAR.err <- dic.interp.LOSCAR.err[["y"]] / 2
 
 # Read in DIC time series from Haynes and Hönisch (2020)
-dic_HH <- readRDS("Harperetal_subm/data/dic_HH.rds")
+dic_HH <- readRDS("Harperetal_resubm/data/dic_HH.rds")
 # Linearly interpolate DIC for ages associated with each time step using input DIC time series 
 dic.interp.HH <- approx(dic_HH$dic.HH.x, dic_HH$dic.HH.y, xout=ages.prox, method="linear") 
 dic.HH.meanerr <- rowMeans(cbind(dic_HH$dic.HH.2sp, dic_HH$dic.HH.2sn))
@@ -173,22 +202,25 @@ minmaxerr <- 0.0003 # i.e., from LOSCAR and cGENIE PETM DIC differences
 dic.max <- pmax(dic.LOSCAR, dic.HH) + minmaxerr
 dic.min <- pmin(dic.LOSCAR, dic.HH) - minmaxerr
 
-# Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
-dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
-names(dic.pri) <- c("age", "wavg","twosd", "min","max")
-
-ggplot() +
-  geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
-  geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
-  geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
-  geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
-  scale_x_reverse() +
-  labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
-  theme_bw() +
-  theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
-        axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
-        axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
-        axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
+## Plot the DIC prior with inverse variance weighted average, 95% CI and distribution truncation - Figure S3 in Harper et al., in prep. 
+# dic.pri <- data.frame((ages.prox/10^3), (dic.avg.pri*10^3), (2*sqrt(dic.var.pri)*10^3), (dic.min*10^3), (dic.max*10^3))
+# names(dic.pri) <- c("age", "wavg","twosd", "min","max")
+# 
+# fig.font <- "Arial"
+# fontsize.axislabels <- 12
+# fontsize.scalelabels <- 12
+# ggplot() +
+#   geom_ribbon(data = dic.pri, aes(x=age, ymin=(wavg+twosd), ymax=wavg-twosd), fill = "gray") +
+#   geom_line(data = dic.pri, aes(x=age, y=wavg), color = "black") +
+#   geom_line(data = dic.pri, aes(x=age, y=min), color = "black", linetype=3) +
+#   geom_line(data = dic.pri, aes(x=age, y=max), color = "black", linetype=3) +
+#   scale_x_reverse() +
+#   labs(x = "Age (Ma)", y = expression("DIC (mmol/kg)")) +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(family = fig.font, size = fontsize.scalelabels, color = "#000000"),
+#         axis.text.y = element_text(family = fig.font, size = fontsize.scalelabels,color = "#000000"),
+#         axis.title.x = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"),
+#         axis.title.y = element_text(family = fig.font, size = fontsize.axislabels, color = "#000000"))
 
 ############################################################################################
 # Data to pass to jags
@@ -245,24 +277,30 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
             "dic.avg.pri" = dic.avg.pri,
             "dic.var.pri" = dic.var.pri,
             "dic.min" = dic.min,
-            "dic.max" = dic.max)
+            "dic.max" = dic.max,
+            "DDco3" = DDco3,
+            "DDco3.sd" = DDco3.sd,
+            "mgca_pHcorr.avg" = mgca_pHcorr.avg,
+            "mgca_pHcorr.sd" = mgca_pHcorr.sd,
+            "d18O_pHcorr.avg" = d18O_pHcorr.avg,
+            "d18O_pHcorr.sd" = d18O_pHcorr.sd)
 
 
 ############################################################################################
 # Run the inversion
 
-jout = jags.parallel(model.file = "Harperetal_subm/code/_ForamPSMLPEE.R", parameters.to.save = parms,
-            data = data, inits = NULL, n.chains = 9, n.iter = 800000,
-            n.burnin = 500000, n.thin = 100)
+system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE.R", 
+                     parameters.to.save = parms, data = data, inits = NULL, 
+                     n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
 
 
 ############################################################################################
 # Display summary statistics and save summary as .csv
 
-View(jout$BUGSoutput$summary)
-write.csv(jout$BUGSoutput$summary, "Harperetal_subm/out/inversion_sum.csv")
+#View(jout$BUGSoutput$summary)
+#write.csv(jout$BUGSoutput$summary, "Harperetal_resubm/out_senstest/inversion_sum.csv")
 
 ############################################################################################
-
+save(jout, file = "Harperetal_resubm/out_senstest/LPEE_pHMgCa7.rda")
 

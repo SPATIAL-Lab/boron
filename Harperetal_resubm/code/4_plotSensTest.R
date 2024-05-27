@@ -1,34 +1,37 @@
 
-# Plots time series posteriors from MCMC output object for senstivity tests
+# Plots time series posteriors from MCMC output object for sensitivity tests
+# Note that full inversion output files used here ('jout') are too big to include
+# in the repository. Thus, individual sensitivity test inversions must be re-run 
+# and inversion output saved in "out_..." folders for this script to function.
 
 ### INPUT ###
 ############################################################################################
 ### Load MCMC objects from MCMC inversion output 
-load(file = "Harperetal_subm/RevisionApril2024/out_primary/LPEE_prim.rda")
+load(file = "Harperetal_resubm/out_primary/LPEE_prim.rda")
 jout_prim <- jout
 rm(jout)
   
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_MgCasw.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_MgCasw.rda")
 jout_MgCasw <- jout
 rm(jout)
 
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_pHMgCa3.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_pHMgCa3.rda")
 jout_pHMgCa3 <- jout
 rm(jout)
 
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_pHMgCa7.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_pHMgCa7.rda")
 jout_pHMgCa7 <- jout
 rm(jout)
 
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_nopHd18O.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_nopHd18O.rda")
 jout_nopHd18O <- jout
 rm(jout)
 
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_CO3.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_CO3.rda")
 jout_CO3 <- jout
 rm(jout)
 
-load(file = "Harperetal_subm/RevisionApril2024/out_senstest/LPEE_CCvar.rda")
+load(file = "Harperetal_resubm/out_senstest/LPEE_CCvar.rda")
 jout_CCvar <- jout
 rm(jout)
 
@@ -36,7 +39,7 @@ rm(jout)
 parms2plot <- c("sal", "tempC", "pco2", "pH")
 
 ### Time series ages vector (for time series data) 
-load(file = "Harperetal_subm/RevisionApril2024/out_primary/ages.prox.rda")
+load(file = "Harperetal_resubm/out_primary/ages.prox.rda")
 ages <- ages.prox/1e3
 
 ############################################################################################
