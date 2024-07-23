@@ -291,7 +291,7 @@ data <- list("d11Bf.data1" = clean.d11B1$d11B,
 
 system.time({jout = jags.parallel(model.file = "Harperetal_resubm/code/_ForamPSMLPEE.R", 
                      parameters.to.save = parms, data = data, inits = NULL, 
-                     n.chains = 9, n.iter = 800000, n.burnin = 500000, n.thin = 200)})
+                     n.chains = 3, n.iter = 1000, n.burnin = 500, n.thin = 1)})
 # 500k burn in, 9 chains, 800k iterations takes 10 hours
 
 

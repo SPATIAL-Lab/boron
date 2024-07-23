@@ -3,7 +3,7 @@
 # Note that full inversion output files used here ('jout') are too big to include in the repository. 
 # Thus inversions would need to be re-run using "...Driver..." .R files. 
 
-jout <- jout_prim
+jout #<- jout_prim
 load(file = "Harperetal_resubm/out_primary/ages.prox.rda")
 
 ###########################################################################################

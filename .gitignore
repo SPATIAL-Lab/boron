@@ -6,6 +6,7 @@
 
 
 # User-specific files
+plotting/data
 Harperetal_resubm/out_senstest
 Harperetal_resubm/out_primary/LPEE_prim.rda
 Harperetal_resubm/R.DS_Store
