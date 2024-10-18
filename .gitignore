@@ -7,10 +7,10 @@
 
 # User-specific files
 plotting/data
-Harperetal_resubm/out_senstest
-Harperetal_resubm/out_primary/LPEE_prim.rda
-Harperetal_resubm/R.DS_Store
-Harperetal_resubm/data/.DS_Store
+Harperetal_2024_PNAS/out_senstest
+Harperetal_2024_PNAS/out_primary/LPEE_prim.rda
+Harperetal_2024_PNAS/R.DS_Store
+Harperetal_2024_PNAS/data/.DS_Store
 
 # Example code in package build process
 *-Ex.R
